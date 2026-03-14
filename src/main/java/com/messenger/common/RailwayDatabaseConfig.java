@@ -1,0 +1,64 @@
+package com.messenger.common;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
+
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Конвертирует Railway DATABASE_URL (postgresql://...) в JDBC формат для Spring Boot.
+ * Railway даёт postgresql://user:pass@host:port/db, Spring Boot требует jdbc:postgresql://host:port/db
+ */
+public class RailwayDatabaseConfig implements EnvironmentPostProcessor {
+
+    @Override
+    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        String databaseUrl = environment.getProperty("DATABASE_URL");
+        if (databaseUrl == null || databaseUrl.isBlank()) {
+            return;
+        }
+        if (!databaseUrl.startsWith("postgresql://") && !databaseUrl.startsWith("postgres://")) {
+            return;
+        }
+        try {
+            URI uri = URI.create(databaseUrl.replace("postgres://", "postgresql://"));
+            String userInfo = uri.getUserInfo();
+            String host = uri.getHost();
+            int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+            String path = uri.getPath();
+            String database = path != null && path.length() > 1 ? path.substring(1) : "railway";
+
+            String user = "";
+            String password = "";
+            if (userInfo != null && !userInfo.isEmpty()) {
+                try {
+                    userInfo = java.net.URLDecoder.decode(userInfo, java.nio.charset.StandardCharsets.UTF_8);
+                } catch (Exception ignored) {}
+                int colon = userInfo.indexOf(':');
+                if (colon > 0) {
+                    user = userInfo.substring(0, colon);
+                    password = userInfo.substring(colon + 1);
+                } else {
+                    user = userInfo;
+                }
+            }
+
+            String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+
+            Map<String, Object> props = new HashMap<>();
+            props.put("spring.datasource.url", jdbcUrl);
+            props.put("spring.datasource.username", user);
+            props.put("spring.datasource.password", password);
+
+            environment.getPropertySources().addFirst(
+                    new MapPropertySource("railwayDb", props)
+            );
+        } catch (Exception e) {
+            // Игнорируем — будут использованы дефолтные настройки
+        }
+    }
+}

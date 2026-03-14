@@ -42,12 +42,10 @@
 
 | Переменная | Значение | Описание |
 |------------|----------|----------|
-| `DATABASE_JDBC_URL` | `jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}` | JDBC URL для Spring Boot |
-| `PGUSER` | `${{Postgres.PGUSER}}` | Пользователь БД |
-| `PGPASSWORD` | `${{Postgres.PGPASSWORD}}` | Пароль БД |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Ссылка на PostgreSQL (автоматически конвертируется в JDBC) |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` | Ссылка на Redis |
 
-> **Важно:** Замените `Postgres` и `Redis` на фактические имена ваших сервисов в проекте. Railway даёт `DATABASE_URL` в формате `postgresql://...`, но Spring Boot требует `jdbc:postgresql://...` — поэтому используем `DATABASE_JDBC_URL`.
+> **Важно:** Замените `Postgres` и `Redis` на фактические имена ваших сервисов в проекте. Приложение автоматически конвертирует `postgresql://...` в формат JDBC.
 
 ### JWT
 
