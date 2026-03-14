@@ -59,7 +59,7 @@ public class LocalFileService {
         try {
             Files.createDirectories(this.uploadDir);
         } catch (IOException e) {
-            log.error("Failed to create upload directory", e);
+            log.error("Failed to create upload directory: {}", e.getMessage());
         }
     }
 

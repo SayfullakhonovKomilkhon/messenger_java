@@ -20,10 +20,13 @@ WORKDIR /app
 
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
 
 # Copy built JAR from build stage
 COPY --from=build /app/build/libs/messenger-backend-0.0.1-SNAPSHOT.jar app.jar
+
+# Create uploads dir and fix ownership (нужны права на запись для голосовых/файлов)
+RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app
+USER appuser
 
 # Railway sets PORT automatically
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
