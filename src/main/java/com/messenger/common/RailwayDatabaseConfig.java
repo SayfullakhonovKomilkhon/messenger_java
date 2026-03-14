@@ -17,6 +17,16 @@ public class RailwayDatabaseConfig implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        // Railway: публичный URL для загруженных файлов (голосовые, фото и т.д.)
+        String publicDomain = environment.getProperty("RAILWAY_PUBLIC_DOMAIN");
+        if (publicDomain != null && !publicDomain.isBlank()) {
+            Map<String, Object> fileProps = new HashMap<>();
+            fileProps.put("file.public-base-url", "https://" + publicDomain + "/uploads");
+            environment.getPropertySources().addFirst(
+                    new MapPropertySource("railwayFileUrl", fileProps)
+            );
+        }
+
         String databaseUrl = environment.getProperty("DATABASE_URL");
         if (databaseUrl == null || databaseUrl.isBlank()) {
             return;
