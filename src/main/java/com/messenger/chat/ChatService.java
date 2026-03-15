@@ -264,7 +264,8 @@ public class ChatService {
         List<UUID> recipientIds = getOtherParticipantIds(request.conversationId(), senderId);
         for (UUID recipientId : recipientIds) {
             notificationService.sendMessageNotification(
-                    recipientId, senderId, senderName, request.text(), response
+                    recipientId, senderId, senderName, request.text(), response,
+                    request.conversationId()
             );
         }
     }
