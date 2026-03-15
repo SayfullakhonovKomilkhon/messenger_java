@@ -1,5 +1,6 @@
 package com.messenger.common.security;
 
+import com.messenger.common.notification.NotificationService;
 import com.messenger.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +18,11 @@ public class WebSocketEventListener {
     private static final Logger log = LoggerFactory.getLogger(WebSocketEventListener.class);
 
     private final UserService userService;
+    private final NotificationService notificationService;
 
-    public WebSocketEventListener(UserService userService) {
+    public WebSocketEventListener(UserService userService, NotificationService notificationService) {
         this.userService = userService;
+        this.notificationService = notificationService;
     }
 
     @EventListener
@@ -28,7 +31,9 @@ public class WebSocketEventListener {
         if (accessor.getUser() != null) {
             String userId = accessor.getUser().getName();
             try {
-                userService.setOnline(UUID.fromString(userId), true);
+                UUID uid = UUID.fromString(userId);
+                userService.setOnline(uid, true);
+                notificationService.broadcastPresenceToContacts(uid, true);
                 log.info("User connected: {}", userId);
             } catch (Exception e) {
                 log.warn("Failed to set user online: {}", userId, e);
@@ -42,7 +47,9 @@ public class WebSocketEventListener {
         if (accessor.getUser() != null) {
             String userId = accessor.getUser().getName();
             try {
-                userService.setOnline(UUID.fromString(userId), false);
+                UUID uid = UUID.fromString(userId);
+                userService.setOnline(uid, false);
+                notificationService.broadcastPresenceToContacts(uid, false);
                 log.info("User disconnected: {}", userId);
             } catch (Exception e) {
                 log.warn("Failed to set user offline: {}", userId, e);

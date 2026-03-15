@@ -1,6 +1,7 @@
 package com.messenger.common.notification;
 
 import com.messenger.chat.ConversationRepository;
+import com.messenger.chat.ParticipantRepository;
 import com.messenger.chat.entity.ConversationParticipant;
 import com.messenger.user.SettingsService;
 import org.slf4j.Logger;
@@ -22,15 +23,18 @@ public class NotificationService {
     private final PushNotificationService pushService;
     private final SettingsService settingsService;
     private final ConversationRepository conversationRepository;
+    private final ParticipantRepository participantRepository;
 
     public NotificationService(SimpMessagingTemplate messagingTemplate,
                                 PushNotificationService pushService,
                                 SettingsService settingsService,
-                                ConversationRepository conversationRepository) {
+                                ConversationRepository conversationRepository,
+                                ParticipantRepository participantRepository) {
         this.messagingTemplate = messagingTemplate;
         this.pushService = pushService;
         this.settingsService = settingsService;
         this.conversationRepository = conversationRepository;
+        this.participantRepository = participantRepository;
     }
 
     public void sendToUser(UUID userId, String destination, Object payload) {
@@ -114,6 +118,21 @@ public class NotificationService {
 
     public void sendStatusEvent(UUID userId, Object statusPayload) {
         sendToUser(userId, "/queue/status", statusPayload);
+    }
+
+    public void broadcastPresenceToContacts(UUID userId, boolean online) {
+        try {
+            List<UUID> contactIds = participantRepository.findContactIds(userId);
+            Map<String, Object> payload = Map.of(
+                    "type", online ? "USER_ONLINE" : "USER_OFFLINE",
+                    "userId", userId.toString()
+            );
+            for (UUID contactId : contactIds) {
+                sendToUser(contactId, "/queue/presence", payload);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to broadcast presence for user {}: {}", userId, e.getMessage());
+        }
     }
 
     public void sendTypingEvent(UUID userId, Object typingPayload) {
