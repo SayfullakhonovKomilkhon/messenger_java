@@ -22,6 +22,11 @@ public class RailwayDatabaseConfig implements EnvironmentPostProcessor {
         if (publicDomain != null && !publicDomain.isBlank()) {
             Map<String, Object> fileProps = new HashMap<>();
             fileProps.put("file.public-base-url", "https://" + publicDomain + "/uploads");
+            // Railway: без Volume файловая система read-only. Нужен Volume с mount path /app/uploads
+            String uploadDir = environment.getProperty("FILE_UPLOAD_DIR");
+            if (uploadDir == null || uploadDir.isBlank()) {
+                fileProps.put("file.upload-dir", "/app/uploads");
+            }
             environment.getPropertySources().addFirst(
                     new MapPropertySource("railwayFileUrl", fileProps)
             );

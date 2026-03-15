@@ -18,18 +18,21 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create non-root user + su-exec for privilege drop
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    apk add --no-cache su-exec
 
 # Copy built JAR from build stage
 COPY --from=build /app/build/libs/messenger-backend-0.0.1-SNAPSHOT.jar app.jar
 
-# Create uploads dir and fix ownership (нужны права на запись для голосовых/файлов)
+# Create uploads dir (Volume на Railway примонтирует сюда)
 RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app
-USER appuser
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Railway sets PORT automatically
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 EXPOSE 3000
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar -Dserver.port=${PORT:-3000} app.jar"]
+ENTRYPOINT ["/entrypoint.sh"]

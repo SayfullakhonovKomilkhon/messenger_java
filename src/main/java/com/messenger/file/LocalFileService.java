@@ -59,12 +59,15 @@ public class LocalFileService {
             @Value("${file.upload-dir:uploads}") String uploadDir,
             @Value("${file.public-base-url:http://localhost:3000/uploads}") String publicBaseUrl) {
         this.maxFileSizeBytes = maxFileSizeBytes;
-        this.uploadDir = Paths.get(uploadDir);
+        Path base = Paths.get(uploadDir);
+        this.uploadDir = base.isAbsolute() ? base : base.toAbsolutePath().normalize();
         this.publicBaseUrl = publicBaseUrl;
         try {
             Files.createDirectories(this.uploadDir);
+            log.info("Upload directory: {} (writable: {})", this.uploadDir,
+                    Files.isWritable(this.uploadDir));
         } catch (IOException e) {
-            log.error("Failed to create upload directory: {}", e.getMessage());
+            log.error("Failed to create upload directory {}: {}", this.uploadDir, e.getMessage());
         }
     }
 
@@ -95,8 +98,9 @@ public class LocalFileService {
             Files.createDirectories(filePath.getParent());
             Files.write(filePath, bytes);
         } catch (IOException e) {
-            log.error("Failed to save file to {}: {}", uploadDir.toAbsolutePath(), e.getMessage(), e);
-            throw new AppException("Failed to save file", HttpStatus.INTERNAL_SERVER_ERROR);
+            String msg = "Failed to save file: " + e.getMessage();
+            log.error("Failed to save file to {}: {}", uploadDir, e.getMessage(), e);
+            throw new AppException(msg, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         String fileUrl = publicBaseUrl + "/" + fileName;
