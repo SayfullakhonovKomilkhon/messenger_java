@@ -28,11 +28,9 @@ COPY --from=build /app/build/libs/messenger-backend-0.0.1-SNAPSHOT.jar app.jar
 # Create uploads dir (Volume на Railway примонтирует сюда)
 RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Railway sets PORT automatically
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 EXPOSE 3000
-ENTRYPOINT ["/entrypoint.sh"]
+# chown для Volume (монтируется как root); su-exec переключает на appuser
+ENTRYPOINT ["sh", "-c", "chown -R appuser:appgroup /app/uploads 2>/dev/null || true; exec su-exec appuser java $JAVA_OPTS -jar -Dserver.port=${PORT:-3000} app.jar"]
