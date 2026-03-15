@@ -1,5 +1,6 @@
 package com.messenger.common.notification;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
@@ -20,6 +21,10 @@ import java.util.Map;
 public class FirebaseConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FirebaseConfig.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${fcm.service-account-json:}")
+    private String serviceAccountJson;
 
     @Value("${fcm.project-id:}")
     private String projectId;
@@ -38,43 +43,63 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseMessaging firebaseMessaging() {
-        if (projectId.isBlank() || clientEmail.isBlank() || privateKey.isBlank()
-                || clientId.isBlank() || privateKeyId.isBlank()) {
-            log.warn("FCM credentials not configured (need FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_CLIENT_ID, FCM_PRIVATE_KEY, FCM_PRIVATE_KEY_ID) — push disabled");
-            return null;
-        }
-
         try {
-            String keyWithNewlines = privateKey.replace("\\n", "\n");
-            Map<String, String> creds = Map.of(
-                    "type", "service_account",
-                    "project_id", projectId,
-                    "private_key_id", privateKeyId,
-                    "private_key", keyWithNewlines,
-                    "client_email", clientEmail,
-                    "client_id", clientId,
-                    "token_uri", "https://oauth2.googleapis.com/token"
-            );
-            String serviceAccountJson = new ObjectMapper().writeValueAsString(creds);
+            String json = buildServiceAccountJson();
+            if (json == null) {
+                return null;
+            }
 
             GoogleCredentials credentials = GoogleCredentials.fromStream(
-                    new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8))
+                    new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))
             );
+
+            JsonNode root = objectMapper.readTree(json);
+            String projId = root.path("project_id").asText();
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(credentials)
-                    .setProjectId(projectId)
+                    .setProjectId(projId)
                     .build();
 
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
             }
 
-            log.info("Firebase initialized for project: {}", projectId);
+            log.info("Firebase initialized for project: {}", projId);
             return FirebaseMessaging.getInstance();
         } catch (IOException e) {
             log.error("Failed to initialize Firebase: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String buildServiceAccountJson() throws IOException {
+        // Вариант 1: полный JSON из одной переменной (надёжнее)
+        if (serviceAccountJson != null && !serviceAccountJson.isBlank()) {
+            String trimmed = serviceAccountJson.trim();
+            // Убираем лишние переносы между ключами JSON (Railway может добавить)
+            if (trimmed.startsWith("{")) {
+                return trimmed.replace("\r\n", "").replace("\n", "").replace("\r", "");
+            }
+        }
+
+        // Вариант 2: отдельные переменные
+        if (projectId.isBlank() || clientEmail.isBlank() || privateKey.isBlank()
+                || clientId.isBlank() || privateKeyId.isBlank()) {
+            log.warn("FCM not configured. Use FCM_SERVICE_ACCOUNT_JSON (full JSON) or all FCM_* variables.");
+            return null;
+        }
+
+        String keyWithNewlines = privateKey.replace("\\n", "\n");
+        Map<String, String> creds = Map.of(
+                "type", "service_account",
+                "project_id", projectId,
+                "private_key_id", privateKeyId,
+                "private_key", keyWithNewlines,
+                "client_email", clientEmail,
+                "client_id", clientId,
+                "token_uri", "https://oauth2.googleapis.com/token"
+        );
+        return objectMapper.writeValueAsString(creds);
     }
 }

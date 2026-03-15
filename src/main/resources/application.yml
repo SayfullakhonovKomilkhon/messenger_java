@@ -50,6 +50,9 @@ r2:
   public-url: ${R2_PUBLIC_URL:}
 
 fcm:
+  # Вариант A: весь JSON одной переменной (надёжнее, избегает Invalid PKCS#8)
+  service-account-json: ${FCM_SERVICE_ACCOUNT_JSON:}
+  # Вариант B: отдельные переменные
   project-id: ${FCM_PROJECT_ID:}
   client-email: ${FCM_CLIENT_EMAIL:}
   client-id: ${FCM_CLIENT_ID:}
