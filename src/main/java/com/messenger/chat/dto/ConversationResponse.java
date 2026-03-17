@@ -21,6 +21,9 @@ public record ConversationResponse(
     public record LastMessageInfo(
             String text,
             LocalDateTime createdAt,
-            String status
+            String status,
+            String fileUrl,
+            String mimeType,
+            Boolean isVoiceMessage
     ) {}
 }

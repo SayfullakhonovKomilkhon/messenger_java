@@ -89,7 +89,8 @@ public class ChatService {
             Message lastMsg = lastMessages.get(convId);
             if (lastMsg != null) {
                 lastMessageInfo = new ConversationResponse.LastMessageInfo(
-                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus()
+                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
+                        lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
                 );
             }
 
@@ -206,6 +207,8 @@ public class ChatService {
         );
     }
 
+    private static final int PENDING_MESSAGE_LIMIT = 3;
+
     @Transactional
     public MessageResponse sendMessage(UUID senderId, SendMessageRequest request) {
         Optional<Message> existing = messageRepository.findByClientMessageId(request.clientMessageId());
@@ -215,6 +218,22 @@ public class ChatService {
 
         conversationRepository.findParticipant(request.conversationId(), senderId)
                 .orElseThrow(() -> new AppException("Not a participant of this conversation", HttpStatus.FORBIDDEN));
+
+        // Проверяем лимит сообщений в PENDING-диалоге (запрос ещё не принят)
+        List<ConversationParticipant> allParticipants =
+                conversationRepository.findParticipants(request.conversationId());
+        boolean recipientPending = allParticipants.stream()
+                .anyMatch(cp -> !cp.getUser().getId().equals(senderId)
+                        && "PENDING".equals(cp.getStatus()));
+        if (recipientPending) {
+            long sentCount = messageRepository.countByConversationIdAndSenderId(
+                    request.conversationId(), senderId);
+            if (sentCount >= PENDING_MESSAGE_LIMIT) {
+                throw new AppException(
+                        "Message limit reached. Wait for the recipient to accept your request",
+                        HttpStatus.FORBIDDEN);
+            }
+        }
 
         Message message = new Message();
         message.setConversationId(request.conversationId());
@@ -551,7 +570,8 @@ public class ChatService {
             Message lastMsg = lastMessages.get(convId);
             if (lastMsg != null) {
                 lastMessageInfo = new ConversationResponse.LastMessageInfo(
-                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus()
+                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
+                        lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
                 );
             }
 

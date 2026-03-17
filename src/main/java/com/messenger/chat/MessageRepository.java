@@ -43,4 +43,6 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findPinnedMessages(@Param("conversationId") UUID conversationId);
 
     void deleteAllByConversationId(UUID conversationId);
+
+    long countByConversationIdAndSenderId(UUID conversationId, UUID senderId);
 }
