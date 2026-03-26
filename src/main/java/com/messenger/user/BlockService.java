@@ -16,10 +16,12 @@ public class BlockService {
 
     private final BlockedUserRepository blockedUserRepository;
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
-    public BlockService(BlockedUserRepository blockedUserRepository, UserRepository userRepository) {
+    public BlockService(BlockedUserRepository blockedUserRepository, UserRepository userRepository, UserMapper userMapper) {
         this.blockedUserRepository = blockedUserRepository;
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
     }
 
     @Transactional
@@ -62,10 +64,13 @@ public class BlockService {
         return blocked.stream()
                 .map(b -> {
                     User user = usersMap.get(b.getBlockedId());
+                    if (user != null) {
+                        return userMapper.toBlockedResponse(user, b.getCreatedAt());
+                    }
                     return new BlockedUserResponse(
                             b.getBlockedId().toString(),
-                            user != null ? user.getName() : "Deleted User",
-                            user != null ? user.getAvatarUrl() : null,
+                            "Deleted User",
+                            null,
                             b.getCreatedAt()
                     );
                 })

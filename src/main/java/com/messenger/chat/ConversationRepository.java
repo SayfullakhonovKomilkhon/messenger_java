@@ -2,6 +2,7 @@ package com.messenger.chat;
 
 import com.messenger.chat.entity.Conversation;
 import com.messenger.chat.entity.ConversationParticipant;
+import com.messenger.chat.entity.ConversationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,11 +30,17 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @Query("SELECT cp FROM ConversationParticipant cp WHERE cp.conversation.id = :conversationId")
     List<ConversationParticipant> findParticipants(@Param("conversationId") UUID conversationId);
 
-    @Query("SELECT c FROM Conversation c WHERE c.id IN (" +
+    @Query("SELECT c FROM Conversation c WHERE c.type = 'DIRECT' AND c.id IN (" +
             "SELECT cp1.conversation.id FROM ConversationParticipant cp1 " +
             "WHERE cp1.user.id = :userId1 AND cp1.conversation.id IN (" +
             "  SELECT cp2.conversation.id FROM ConversationParticipant cp2 WHERE cp2.user.id = :userId2" +
             "))")
     Optional<Conversation> findDirectConversation(@Param("userId1") UUID userId1,
                                                    @Param("userId2") UUID userId2);
+
+    @Query("SELECT c FROM Conversation c WHERE c.type = :type AND c.id IN (" +
+            "SELECT cp.conversation.id FROM ConversationParticipant cp WHERE cp.user.id = :userId)")
+    List<Conversation> findByTypeAndUserId(@Param("type") ConversationType type, @Param("userId") UUID userId);
+
+    Optional<Conversation> findByInviteLink(String inviteLink);
 }

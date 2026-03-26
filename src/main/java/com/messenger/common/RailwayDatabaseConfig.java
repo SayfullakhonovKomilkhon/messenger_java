@@ -73,7 +73,7 @@ public class RailwayDatabaseConfig implements EnvironmentPostProcessor {
                     new MapPropertySource("railwayDb", props)
             );
         } catch (Exception e) {
-            // Игнорируем — будут использованы дефолтные настройки
+            System.err.println("[RailwayDatabaseConfig] Failed to parse DATABASE_URL: " + e.getMessage());
         }
     }
 }

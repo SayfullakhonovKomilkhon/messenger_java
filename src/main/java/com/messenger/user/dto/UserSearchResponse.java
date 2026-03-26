@@ -5,5 +5,6 @@ public record UserSearchResponse(
         String name,
         String username,
         String avatarUrl,
-        Boolean isOnline
+        Boolean isOnline,
+        Boolean isBot
 ) {}

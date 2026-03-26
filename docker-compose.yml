@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: messenger
+      POSTGRES_USER: messenger
+      POSTGRES_PASSWORD: M3ss3ng3r_Str0ng_Pwd!
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      PORT: 3000
+      DATABASE_JDBC_URL: jdbc:postgresql://postgres:5432/messenger
+      PGUSER: messenger
+      PGPASSWORD: M3ss3ng3r_Str0ng_Pwd!
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: DemosMessenger_VPS_JWT_Secret_Key_2026_very_long_and_secure_256bit
+      JWT_ACCESS_EXPIRES: 3600
+      JWT_REFRESH_EXPIRES: 2592000
+      FILE_UPLOAD_DIR: /app/uploads
+      FILE_PUBLIC_BASE_URL: http://31.130.150.246:3000/uploads
+      FCM_SERVICE_ACCOUNT_FILE: /app/firebase-service-account.json
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - uploads:/app/uploads
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+
+volumes:
+  pgdata:
+  uploads:

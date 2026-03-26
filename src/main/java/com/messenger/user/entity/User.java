@@ -39,6 +39,9 @@ public class User {
     @Column(columnDefinition = "jsonb")
     private String settings = "{}";
 
+    @Column(name = "is_bot")
+    private Boolean isBot = false;
+
     @Column(name = "is_online")
     private Boolean isOnline = false;
 
@@ -82,6 +85,9 @@ public class User {
 
     public String getFcmToken() { return fcmToken; }
     public void setFcmToken(String fcmToken) { this.fcmToken = fcmToken; }
+
+    public Boolean getIsBot() { return isBot; }
+    public void setIsBot(Boolean isBot) { this.isBot = isBot; }
 
     public Boolean getIsOnline() { return isOnline; }
     public void setIsOnline(Boolean isOnline) { this.isOnline = isOnline; }

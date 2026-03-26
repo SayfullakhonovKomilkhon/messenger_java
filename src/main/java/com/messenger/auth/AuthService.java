@@ -60,14 +60,24 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByPhone(request.phone())
-                .orElseThrow(() -> new AppException("Invalid credentials", HttpStatus.UNAUTHORIZED));
+        var optUser = userRepository.findByPhone(request.phone());
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new AppException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+        if (optUser.isPresent()) {
+            User user = optUser.get();
+            if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                throw new AppException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+            }
+            log.info("User logged in: {}", user.getId());
+            return buildAuthResponse(user);
         }
 
-        log.info("User logged in: {}", user.getId());
+        // Auto-register: user not found — create account on the fly
+        User user = new User();
+        user.setPhone(request.phone());
+        user.setName(request.phone());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user = userRepository.save(user);
+        log.info("Auto-registered and logged in: {}", user.getId());
         return buildAuthResponse(user);
     }
 

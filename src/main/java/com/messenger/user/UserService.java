@@ -18,9 +18,11 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, UserMapper userMapper) {
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
     }
 
     public List<UserSearchResponse> search(String query, UUID currentUserId) {
@@ -29,7 +31,7 @@ public class UserService {
         }
 
         return userRepository.searchByNameOrUsername(query, currentUserId).stream()
-                .map(this::toSearchResponse)
+                .map(userMapper::toSearchResponse)
                 .toList();
     }
 
@@ -56,15 +58,5 @@ public class UserService {
     public User getById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
-    }
-
-    private UserSearchResponse toSearchResponse(User user) {
-        return new UserSearchResponse(
-                user.getId().toString(),
-                user.getName(),
-                user.getUsername(),
-                user.getAvatarUrl(),
-                user.getIsOnline()
-        );
     }
 }

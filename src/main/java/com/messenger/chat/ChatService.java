@@ -3,7 +3,10 @@ package com.messenger.chat;
 import com.messenger.chat.dto.*;
 import com.messenger.chat.entity.Conversation;
 import com.messenger.chat.entity.ConversationParticipant;
+import com.messenger.chat.entity.ConversationType;
+import com.messenger.chat.entity.GroupRole;
 import com.messenger.chat.entity.Message;
+import com.messenger.chat.event.MessageSentEvent;
 import com.messenger.common.exception.AppException;
 import com.messenger.common.notification.NotificationService;
 import com.messenger.user.BlockService;
@@ -11,6 +14,7 @@ import com.messenger.user.UserRepository;
 import com.messenger.user.entity.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,11 @@ import java.util.stream.Collectors;
 public class ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
+    private static final Comparator<ConversationResponse> BY_UPDATED_DESC = (a, b) -> {
+        if (a.updatedAt() == null) return 1;
+        if (b.updatedAt() == null) return -1;
+        return b.updatedAt().compareTo(a.updatedAt());
+    };
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
@@ -31,19 +40,22 @@ public class ChatService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final BlockService blockService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ChatService(ConversationRepository conversationRepository,
                        MessageRepository messageRepository,
                        ParticipantRepository participantRepository,
                        UserRepository userRepository,
                        NotificationService notificationService,
-                       BlockService blockService) {
+                       BlockService blockService,
+                       ApplicationEventPublisher eventPublisher) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.participantRepository = participantRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.blockService = blockService;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<ConversationResponse> getConversations(UUID userId) {
@@ -69,47 +81,26 @@ public class ChatService {
                     .filter(cp -> cp.getUser().getId().equals(userId))
                     .findFirst().orElse(null);
             if (myParticipation == null) continue;
-            // Только ACTIVE — PENDING идут в «Запросы сообщений»
             if ("PENDING".equals(myParticipation.getStatus())) continue;
 
-            ConversationParticipant otherParticipation = participants.stream()
-                    .filter(cp -> !cp.getUser().getId().equals(userId))
-                    .findFirst().orElse(null);
-            if (otherParticipation == null) continue;
+            Conversation conv = myParticipation.getConversation();
+            ConversationType type = conv.getType() != null ? conv.getType() : ConversationType.DIRECT;
 
-            User other = otherParticipation.getUser();
-            ConversationResponse.ParticipantInfo participantInfo = new ConversationResponse.ParticipantInfo(
-                    other.getId().toString(),
-                    other.getName(),
-                    other.getAvatarUrl(),
-                    other.getIsOnline()
-            );
+            ConversationResponse.LastMessageInfo lastMessageInfo = buildLastMessageInfo(lastMessages.get(convId));
 
-            ConversationResponse.LastMessageInfo lastMessageInfo = null;
-            Message lastMsg = lastMessages.get(convId);
-            if (lastMsg != null) {
-                lastMessageInfo = new ConversationResponse.LastMessageInfo(
-                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
-                        lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
-                );
+            if (type == ConversationType.GROUP) {
+                result.add(buildGroupConversationResponse(conv, participants, myParticipation, lastMessageInfo));
+            } else {
+                ConversationParticipant otherParticipation = participants.stream()
+                        .filter(cp -> !cp.getUser().getId().equals(userId))
+                        .findFirst().orElse(null);
+                if (otherParticipation == null) continue;
+
+                result.add(buildDirectConversationResponse(convId, conv, myParticipation, otherParticipation, lastMessageInfo));
             }
-
-            result.add(new ConversationResponse(
-                    convId.toString(),
-                    myParticipation.getConversation().getUpdatedAt(),
-                    participantInfo,
-                    lastMessageInfo,
-                    myParticipation.getUnreadCount() != null ? myParticipation.getUnreadCount() : 0,
-                    Boolean.TRUE.equals(myParticipation.getIsPinned()),
-                    Boolean.TRUE.equals(myParticipation.getIsMuted())
-            ));
         }
 
-        result.sort((a, b) -> {
-            if (a.updatedAt() == null) return 1;
-            if (b.updatedAt() == null) return -1;
-            return b.updatedAt().compareTo(a.updatedAt());
-        });
+        result.sort(BY_UPDATED_DESC);
 
         return result;
     }
@@ -175,6 +166,7 @@ public class ChatService {
         }
 
         Conversation conversation = new Conversation();
+        conversation.setType(ConversationType.DIRECT);
         conversation = conversationRepository.save(conversation);
 
         ConversationParticipant cp1 = new ConversationParticipant();
@@ -186,7 +178,7 @@ public class ChatService {
         ConversationParticipant cp2 = new ConversationParticipant();
         cp2.setConversation(conversation);
         cp2.setUser(participant);
-        cp2.setStatus("PENDING"); // Получатель должен принять запрос
+        cp2.setStatus("PENDING");
         participantRepository.save(cp2);
 
         log.info("Conversation created between {} and {} (recipient PENDING)", userId, participantId);
@@ -207,8 +199,6 @@ public class ChatService {
         );
     }
 
-    private static final int PENDING_MESSAGE_LIMIT = 3;
-
     @Transactional
     public MessageResponse sendMessage(UUID senderId, SendMessageRequest request) {
         Optional<Message> existing = messageRepository.findByClientMessageId(request.clientMessageId());
@@ -218,22 +208,6 @@ public class ChatService {
 
         conversationRepository.findParticipant(request.conversationId(), senderId)
                 .orElseThrow(() -> new AppException("Not a participant of this conversation", HttpStatus.FORBIDDEN));
-
-        // Проверяем лимит сообщений в PENDING-диалоге (запрос ещё не принят)
-        List<ConversationParticipant> allParticipants =
-                conversationRepository.findParticipants(request.conversationId());
-        boolean recipientPending = allParticipants.stream()
-                .anyMatch(cp -> !cp.getUser().getId().equals(senderId)
-                        && "PENDING".equals(cp.getStatus()));
-        if (recipientPending) {
-            long sentCount = messageRepository.countByConversationIdAndSenderId(
-                    request.conversationId(), senderId);
-            if (sentCount >= PENDING_MESSAGE_LIMIT) {
-                throw new AppException(
-                        "Message limit reached. Wait for the recipient to accept your request",
-                        HttpStatus.FORBIDDEN);
-            }
-        }
 
         Message message = new Message();
         message.setConversationId(request.conversationId());
@@ -287,6 +261,10 @@ public class ChatService {
                     request.conversationId()
             );
         }
+
+        List<UUID> allParticipantIds = new ArrayList<>(recipientIds);
+        allParticipantIds.add(senderId);
+        eventPublisher.publishEvent(new MessageSentEvent(this, response, allParticipantIds));
     }
 
     @Transactional
@@ -500,14 +478,28 @@ public class ChatService {
     public void deleteConversation(UUID conversationId, UUID userId) {
         conversationRepository.findParticipant(conversationId, userId)
                 .orElseThrow(() -> new AppException("Not a participant", HttpStatus.FORBIDDEN));
+
+        Conversation conv = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException("Conversation not found", HttpStatus.NOT_FOUND));
+        if (conv.getType() == ConversationType.GROUP) {
+            throw new AppException("Use /groups/{id} endpoint to delete a group", HttpStatus.BAD_REQUEST);
+        }
+
         messageRepository.deleteAllByConversationId(conversationId);
         conversationRepository.deleteById(conversationId);
     }
 
     @Transactional
     public void clearHistory(UUID conversationId, UUID userId) {
-        conversationRepository.findParticipant(conversationId, userId)
+        ConversationParticipant cp = conversationRepository.findParticipant(conversationId, userId)
                 .orElseThrow(() -> new AppException("Not a participant", HttpStatus.FORBIDDEN));
+
+        Conversation conv = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new AppException("Conversation not found", HttpStatus.NOT_FOUND));
+        if (conv.getType() == ConversationType.GROUP && (cp.getRole() == null || !cp.getRole().isAtLeast(GroupRole.ADMIN))) {
+            throw new AppException("Only admins can clear group history", HttpStatus.FORBIDDEN);
+        }
+
         messageRepository.deleteAllByConversationId(conversationId);
     }
 
@@ -526,7 +518,6 @@ public class ChatService {
         Map<UUID, List<ConversationParticipant>> byConversation = allParticipants.stream()
                 .collect(Collectors.groupingBy(cp -> cp.getConversation().getId()));
 
-        // Оставляем только диалоги, где у текущего пользователя статус PENDING
         Map<UUID, List<ConversationParticipant>> pendingConversations = new HashMap<>();
         for (Map.Entry<UUID, List<ConversationParticipant>> entry : byConversation.entrySet()) {
             ConversationParticipant myCp = entry.getValue().stream()
@@ -566,31 +557,18 @@ public class ChatService {
                     other.getIsOnline()
             );
 
-            ConversationResponse.LastMessageInfo lastMessageInfo = null;
-            Message lastMsg = lastMessages.get(convId);
-            if (lastMsg != null) {
-                lastMessageInfo = new ConversationResponse.LastMessageInfo(
-                        lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
-                        lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
-                );
-            }
-
             result.add(new ConversationResponse(
                     convId.toString(),
                     myParticipation.getConversation().getUpdatedAt(),
                     participantInfo,
-                    lastMessageInfo,
+                    buildLastMessageInfo(lastMessages.get(convId)),
                     myParticipation.getUnreadCount() != null ? myParticipation.getUnreadCount() : 0,
                     Boolean.TRUE.equals(myParticipation.getIsPinned()),
                     Boolean.TRUE.equals(myParticipation.getIsMuted())
             ));
         }
 
-        result.sort((a, b) -> {
-            if (a.updatedAt() == null) return 1;
-            if (b.updatedAt() == null) return -1;
-            return b.updatedAt().compareTo(a.updatedAt());
-        });
+        result.sort(BY_UPDATED_DESC);
 
         return result;
     }
@@ -645,11 +623,100 @@ public class ChatService {
         }
     }
 
+    // --- Private helpers ---
+
+    private ConversationResponse.LastMessageInfo buildLastMessageInfo(Message lastMsg) {
+        if (lastMsg == null) return null;
+        return new ConversationResponse.LastMessageInfo(
+                lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
+                lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
+        );
+    }
+
+    private ConversationResponse buildDirectConversationResponse(
+            UUID convId, Conversation conv, ConversationParticipant myCp,
+            ConversationParticipant otherCp, ConversationResponse.LastMessageInfo lastMsg) {
+        User other = otherCp.getUser();
+        return new ConversationResponse(
+                convId.toString(),
+                conv.getUpdatedAt(),
+                new ConversationResponse.ParticipantInfo(
+                        other.getId().toString(),
+                        other.getName(),
+                        other.getAvatarUrl(),
+                        other.getIsOnline()
+                ),
+                lastMsg,
+                myCp.getUnreadCount() != null ? myCp.getUnreadCount() : 0,
+                Boolean.TRUE.equals(myCp.getIsPinned()),
+                Boolean.TRUE.equals(myCp.getIsMuted())
+        );
+    }
+
+    private ConversationResponse buildGroupConversationResponse(
+            Conversation conv, List<ConversationParticipant> participants,
+            ConversationParticipant myCp, ConversationResponse.LastMessageInfo lastMsg) {
+
+        List<ConversationResponse.GroupMemberInfo> memberInfos = participants.stream()
+                .map(cp -> new ConversationResponse.GroupMemberInfo(
+                        cp.getUser().getId().toString(),
+                        cp.getUser().getName(),
+                        cp.getUser().getAvatarUrl(),
+                        cp.getUser().getIsOnline(),
+                        cp.getRole() != null ? cp.getRole().name() : "MEMBER",
+                        cp.getJoinedAt()
+                ))
+                .toList();
+
+        ConversationResponse.GroupInfo groupInfo = new ConversationResponse.GroupInfo(
+                conv.getTitle(),
+                conv.getDescription(),
+                conv.getAvatarUrl(),
+                participants.size(),
+                myCp.getRole() != null ? myCp.getRole().name() : "MEMBER",
+                conv.getCreatedBy() != null ? conv.getCreatedBy().toString() : null,
+                memberInfos
+        );
+
+        return new ConversationResponse(
+                conv.getId().toString(),
+                "GROUP",
+                conv.getUpdatedAt(),
+                null,
+                groupInfo,
+                lastMsg,
+                myCp.getUnreadCount() != null ? myCp.getUnreadCount() : 0,
+                Boolean.TRUE.equals(myCp.getIsPinned()),
+                Boolean.TRUE.equals(myCp.getIsMuted())
+        );
+    }
+
     private MessageResponse toMessageResponse(Message message) {
+        String senderName = null;
+        String senderAvatar = null;
+        User sender = userRepository.findById(message.getSenderId()).orElse(null);
+        if (sender != null) {
+            senderName = sender.getName();
+            senderAvatar = sender.getAvatarUrl();
+        }
+
+        String forwardedFromName = null;
+        if (message.getForwardedFromId() != null) {
+            Message originalMsg = messageRepository.findById(message.getForwardedFromId()).orElse(null);
+            if (originalMsg != null) {
+                User originalSender = userRepository.findById(originalMsg.getSenderId()).orElse(null);
+                if (originalSender != null) {
+                    forwardedFromName = originalSender.getName();
+                }
+            }
+        }
+
         return new MessageResponse(
                 message.getId().toString(),
                 message.getConversationId().toString(),
                 message.getSenderId().toString(),
+                senderName,
+                senderAvatar,
                 message.getIsDeleted() != null && message.getIsDeleted() ? null : message.getText(),
                 message.getIsDeleted() != null && message.getIsDeleted() ? null : message.getFileUrl(),
                 message.getMimeType(),
@@ -661,6 +728,7 @@ public class ChatService {
                 message.getVoiceWaveform(),
                 message.getReplyToId() != null ? message.getReplyToId().toString() : null,
                 message.getForwardedFromId() != null ? message.getForwardedFromId().toString() : null,
+                forwardedFromName,
                 message.getIsPinned(),
                 message.getIsEdited(),
                 message.getIsDeleted(),

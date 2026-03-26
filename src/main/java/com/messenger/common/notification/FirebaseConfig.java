@@ -13,8 +13,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 
 @Configuration
@@ -25,6 +27,9 @@ public class FirebaseConfig {
 
     @Value("${fcm.service-account-json:}")
     private String serviceAccountJson;
+
+    @Value("${fcm.service-account-file:}")
+    private String serviceAccountFile;
 
     @Value("${fcm.project-id:}")
     private String projectId;
@@ -74,16 +79,21 @@ public class FirebaseConfig {
     }
 
     private String buildServiceAccountJson() throws IOException {
-        // Вариант 1: полный JSON из одной переменной (надёжнее)
         if (serviceAccountJson != null && !serviceAccountJson.isBlank()) {
             String trimmed = serviceAccountJson.trim();
-            // Убираем лишние переносы между ключами JSON (Railway может добавить)
             if (trimmed.startsWith("{")) {
-                return trimmed.replace("\r\n", "").replace("\n", "").replace("\r", "");
+                return trimmed;
             }
         }
 
-        // Вариант 2: отдельные переменные
+        if (serviceAccountFile != null && !serviceAccountFile.isBlank()) {
+            File file = new File(serviceAccountFile);
+            if (file.exists() && file.isFile()) {
+                log.info("Loading Firebase credentials from file: {}", serviceAccountFile);
+                return Files.readString(file.toPath(), StandardCharsets.UTF_8);
+            }
+        }
+
         if (projectId.isBlank() || clientEmail.isBlank() || privateKey.isBlank()
                 || clientId.isBlank() || privateKeyId.isBlank()) {
             log.warn("FCM not configured. Use FCM_SERVICE_ACCOUNT_JSON (full JSON) or all FCM_* variables.");

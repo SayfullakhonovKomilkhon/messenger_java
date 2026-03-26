@@ -8,5 +8,6 @@ public record ProfileResponse(
         String avatarUrl,
         String bio,
         Boolean isOnline,
+        Boolean isBot,
         String lastSeenAt
 ) {}

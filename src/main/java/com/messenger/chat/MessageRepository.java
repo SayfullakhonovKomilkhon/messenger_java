@@ -44,5 +44,5 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     void deleteAllByConversationId(UUID conversationId);
 
-    long countByConversationIdAndSenderId(UUID conversationId, UUID senderId);
+    Message findTopByConversationIdOrderByCreatedAtDesc(UUID conversationId);
 }

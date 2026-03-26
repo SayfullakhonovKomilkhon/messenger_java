@@ -39,7 +39,19 @@ public class ConversationParticipant {
     private Boolean isNotificationsEnabled = true;
 
     @Column(name = "status", length = 20)
-    private String status = "ACTIVE"; // ACTIVE | PENDING
+    private String status = "ACTIVE";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 10)
+    private GroupRole role = GroupRole.MEMBER;
+
+    @Column(name = "joined_at")
+    private LocalDateTime joinedAt;
+
+    @PrePersist
+    protected void onJoin() {
+        if (joinedAt == null) joinedAt = LocalDateTime.now();
+    }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -67,4 +79,10 @@ public class ConversationParticipant {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public GroupRole getRole() { return role; }
+    public void setRole(GroupRole role) { this.role = role; }
+
+    public LocalDateTime getJoinedAt() { return joinedAt; }
+    public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
 }

@@ -14,15 +14,17 @@ import java.util.UUID;
 public class ProfileService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
-    public ProfileService(UserRepository userRepository) {
+    public ProfileService(UserRepository userRepository, UserMapper userMapper) {
         this.userRepository = userRepository;
+        this.userMapper = userMapper;
     }
 
     public ProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
-        return toResponse(user);
+        return userMapper.toProfileResponse(user);
     }
 
     @Transactional
@@ -51,7 +53,7 @@ public class ProfileService {
         }
 
         userRepository.save(user);
-        return toResponse(user);
+        return userMapper.toProfileResponse(user);
     }
 
     @Transactional
@@ -60,18 +62,5 @@ public class ProfileService {
             throw new AppException("User not found", HttpStatus.NOT_FOUND);
         }
         userRepository.deleteById(userId);
-    }
-
-    private ProfileResponse toResponse(User user) {
-        return new ProfileResponse(
-                user.getId().toString(),
-                user.getName(),
-                user.getPhone(),
-                user.getUsername(),
-                user.getAvatarUrl(),
-                user.getBio(),
-                user.getIsOnline(),
-                user.getLastSeenAt() != null ? user.getLastSeenAt().toString() : null
-        );
     }
 }

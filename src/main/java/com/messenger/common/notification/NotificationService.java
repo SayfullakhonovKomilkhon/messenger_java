@@ -2,7 +2,9 @@ package com.messenger.common.notification;
 
 import com.messenger.chat.ConversationRepository;
 import com.messenger.chat.ParticipantRepository;
+import com.messenger.chat.entity.Conversation;
 import com.messenger.chat.entity.ConversationParticipant;
+import com.messenger.chat.entity.ConversationType;
 import com.messenger.user.SettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,6 @@ public class NotificationService {
                                          Object wsPayload, UUID conversationId) {
         sendToUser(recipientId, "/queue/messages", wsPayload);
 
-        // Push: проверяем настройки и стратегию
         Map<String, Object> settings = settingsService.getSettings(recipientId);
         Map<String, Object> notifications = (Map<String, Object>) settings.get("notifications");
         boolean fastMode = notifications == null || !Boolean.FALSE.equals(notifications.get("fastMode"));
@@ -63,6 +64,8 @@ public class NotificationService {
 
         Optional<ConversationParticipant> participantOpt =
                 conversationRepository.findParticipant(conversationId, recipientId);
+
+        boolean isMessageRequest = false;
         if (participantOpt.isPresent()) {
             ConversationParticipant cp = participantOpt.get();
             if (Boolean.TRUE.equals(cp.getIsMuted()) ||
@@ -70,32 +73,67 @@ public class NotificationService {
                 log.info("[FCM] Push skipped for user {} (conversation muted or notifications disabled)", recipientId);
                 return;
             }
+            isMessageRequest = "PENDING".equals(cp.getStatus());
         }
 
         String contentMode = notifications != null && notifications.get("notificationContent") != null
                 ? notifications.get("notificationContent").toString()
                 : "name_and_text";
 
+        boolean isGroup = false;
+        String groupTitle = null;
+        Conversation conversation = conversationRepository.findById(conversationId).orElse(null);
+        if (conversation != null && conversation.getType() == ConversationType.GROUP) {
+            isGroup = true;
+            groupTitle = conversation.getTitle();
+        }
+
         String title;
         String body;
-        switch (contentMode) {
-            case "name_only" -> {
-                title = senderName;
-                body = "Новое сообщение";
+
+        if (isMessageRequest) {
+            title = senderName;
+            String preview = messageText != null ? messageText : "Вложение";
+            if (preview.length() > 80) preview = preview.substring(0, 77) + "...";
+            body = "Хочет отправить вам сообщение: " + preview;
+        } else if (isGroup) {
+            switch (contentMode) {
+                case "name_only" -> {
+                    title = groupTitle != null ? groupTitle : "Группа";
+                    body = senderName + ": Новое сообщение";
+                }
+                case "hidden" -> {
+                    title = "Новое сообщение";
+                    body = "";
+                }
+                default -> {
+                    title = groupTitle != null ? groupTitle : "Группа";
+                    String text = messageText != null ? messageText : "Вложение";
+                    if (text.length() > 80) text = text.substring(0, 77) + "...";
+                    body = senderName + ": " + text;
+                }
             }
-            case "hidden" -> {
-                title = "Новое сообщение";
-                body = "";
-            }
-            default -> {
-                title = senderName;
-                body = messageText != null ? messageText : "Вложение";
-                if (body.length() > 100) body = body.substring(0, 97) + "...";
+        } else {
+            switch (contentMode) {
+                case "name_only" -> {
+                    title = senderName;
+                    body = "Новое сообщение";
+                }
+                case "hidden" -> {
+                    title = "Новое сообщение";
+                    body = "";
+                }
+                default -> {
+                    title = senderName;
+                    body = messageText != null ? messageText : "Вложение";
+                    if (body.length() > 100) body = body.substring(0, 97) + "...";
+                }
             }
         }
 
+        String pushType = isMessageRequest ? "MESSAGE_REQUEST" : "NEW_MESSAGE";
         pushService.sendPush(recipientId, title, body, Map.of(
-                "type", "NEW_MESSAGE",
+                "type", pushType,
                 "senderId", senderId.toString(),
                 "conversationId", conversationId.toString()
         ));
