@@ -4,6 +4,7 @@ import com.messenger.chat.dto.*;
 import com.messenger.chat.entity.*;
 import com.messenger.common.exception.AppException;
 import com.messenger.common.notification.NotificationService;
+import com.messenger.e2ee.GroupSenderKeyService;
 import com.messenger.user.UserRepository;
 import com.messenger.user.entity.User;
 import org.slf4j.Logger;
@@ -27,17 +28,20 @@ public class GroupService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final GroupSenderKeyService groupSenderKeyService;
 
     public GroupService(ConversationRepository conversationRepository,
                         ParticipantRepository participantRepository,
                         MessageRepository messageRepository,
                         UserRepository userRepository,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        GroupSenderKeyService groupSenderKeyService) {
         this.conversationRepository = conversationRepository;
         this.participantRepository = participantRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.groupSenderKeyService = groupSenderKeyService;
     }
 
     @Transactional
@@ -123,6 +127,7 @@ public class GroupService {
             throw new AppException("Only the owner can delete a group", HttpStatus.FORBIDDEN);
         }
 
+        groupSenderKeyService.deleteAllForGroup(groupId);
         messageRepository.deleteAllByConversationId(groupId);
         List<ConversationParticipant> members = participantRepository.findAllByConversationId(groupId);
         participantRepository.deleteAll(members);
@@ -165,8 +170,10 @@ public class GroupService {
             UUID memberId = member.getUser().getId();
             if (!memberId.equals(newMemberId)) {
                 notificationService.sendToUser(memberId, "/queue/messages", Map.of(
-                        "type", "group_updated",
-                        "conversationId", groupId.toString()
+                        "type", "group_member_added",
+                        "conversationId", groupId.toString(),
+                        "newMemberId", newMemberId.toString(),
+                        "groupTitle", conversation.getTitle() != null ? conversation.getTitle() : "Группа"
                 ));
             }
         }
@@ -192,6 +199,7 @@ public class GroupService {
         }
 
         participantRepository.delete(memberCp);
+        groupSenderKeyService.deleteForUser(groupId, memberId);
 
         Conversation conversation = findGroupConversation(groupId);
         notificationService.sendToUser(memberId, "/queue/messages", Map.of(
@@ -199,6 +207,15 @@ public class GroupService {
                 "conversationId", groupId.toString(),
                 "groupTitle", conversation.getTitle() != null ? conversation.getTitle() : "Группа"
         ));
+
+        List<ConversationParticipant> remaining = participantRepository.findAllByConversationId(groupId);
+        for (ConversationParticipant rm : remaining) {
+            notificationService.sendToUser(rm.getUser().getId(), "/queue/messages", Map.of(
+                    "type", "sender_key_rotation_needed",
+                    "conversationId", groupId.toString(),
+                    "removedMemberId", memberId.toString()
+            ));
+        }
 
         log.info("User {} removed from group {} by {}", memberId, groupId, actorId);
     }
@@ -264,6 +281,17 @@ public class GroupService {
         }
 
         participantRepository.delete(cp);
+        groupSenderKeyService.deleteForUser(groupId, userId);
+
+        List<ConversationParticipant> remaining = participantRepository.findAllByConversationId(groupId);
+        for (ConversationParticipant rm : remaining) {
+            notificationService.sendToUser(rm.getUser().getId(), "/queue/messages", Map.of(
+                    "type", "sender_key_rotation_needed",
+                    "conversationId", groupId.toString(),
+                    "removedMemberId", userId.toString()
+            ));
+        }
+
         log.info("User {} left group {}", userId, groupId);
     }
 
