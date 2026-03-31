@@ -225,6 +225,11 @@ public class ChatService {
         if (request.replyToId() != null) {
             message.setReplyToId(request.replyToId());
         }
+        if (Boolean.TRUE.equals(request.encrypted())) {
+            message.setEncrypted(true);
+            message.setEncryptedFileKey(request.encryptedFileKey());
+            message.setFileIv(request.fileIv());
+        }
         message = messageRepository.save(message);
 
         Conversation conv = conversationRepository.findById(request.conversationId())
@@ -254,10 +259,14 @@ public class ChatService {
 
         notificationService.sendToUser(senderId, "/queue/messages", response);
 
+        String pushText = Boolean.TRUE.equals(request.encrypted())
+                ? "Новое сообщение"
+                : request.text();
+
         List<UUID> recipientIds = getOtherParticipantIds(request.conversationId(), senderId);
         for (UUID recipientId : recipientIds) {
             notificationService.sendMessageNotification(
-                    recipientId, senderId, senderName, request.text(), response,
+                    recipientId, senderId, senderName, pushText, response,
                     request.conversationId()
             );
         }
@@ -628,8 +637,10 @@ public class ChatService {
     private ConversationResponse.LastMessageInfo buildLastMessageInfo(Message lastMsg) {
         if (lastMsg == null) return null;
         return new ConversationResponse.LastMessageInfo(
+                lastMsg.getId().toString(),
                 lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
-                lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
+                lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage(),
+                lastMsg.getEncrypted()
         );
     }
 
@@ -732,7 +743,10 @@ public class ChatService {
                 message.getIsPinned(),
                 message.getIsEdited(),
                 message.getIsDeleted(),
-                message.getEditedAt()
+                message.getEditedAt(),
+                message.getEncrypted(),
+                message.getEncryptedFileKey(),
+                message.getFileIv()
         );
     }
 }

@@ -63,6 +63,15 @@ public class Message {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "encrypted")
+    private Boolean encrypted = false;
+
+    @Column(name = "encrypted_file_key")
+    private String encryptedFileKey;
+
+    @Column(name = "file_iv")
+    private String fileIv;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -120,4 +129,13 @@ public class Message {
     public void setEditedAt(LocalDateTime editedAt) { this.editedAt = editedAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public Boolean getEncrypted() { return encrypted; }
+    public void setEncrypted(Boolean encrypted) { this.encrypted = encrypted; }
+
+    public String getEncryptedFileKey() { return encryptedFileKey; }
+    public void setEncryptedFileKey(String encryptedFileKey) { this.encryptedFileKey = encryptedFileKey; }
+
+    public String getFileIv() { return fileIv; }
+    public void setFileIv(String fileIv) { this.fileIv = fileIv; }
 }

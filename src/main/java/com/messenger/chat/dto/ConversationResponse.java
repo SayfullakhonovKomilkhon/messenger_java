@@ -53,11 +53,13 @@ public record ConversationResponse(
     ) {}
 
     public record LastMessageInfo(
+            String id,
             String text,
             LocalDateTime createdAt,
             String status,
             String fileUrl,
             String mimeType,
-            Boolean isVoiceMessage
+            Boolean isVoiceMessage,
+            Boolean encrypted
     ) {}
 }

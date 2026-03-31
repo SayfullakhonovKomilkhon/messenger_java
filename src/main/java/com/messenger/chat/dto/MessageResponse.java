@@ -23,5 +23,8 @@ public record MessageResponse(
         Boolean isPinned,
         Boolean isEdited,
         Boolean isDeleted,
-        LocalDateTime editedAt
+        LocalDateTime editedAt,
+        Boolean encrypted,
+        String encryptedFileKey,
+        String fileIv
 ) {}

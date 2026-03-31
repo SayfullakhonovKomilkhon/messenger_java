@@ -14,5 +14,8 @@ public record SendMessageRequest(
         Boolean isVoiceMessage,
         Integer voiceDuration,
         String voiceWaveform,
-        UUID replyToId
+        UUID replyToId,
+        Boolean encrypted,
+        String encryptedFileKey,
+        String fileIv
 ) {}

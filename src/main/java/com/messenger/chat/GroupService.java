@@ -337,8 +337,10 @@ public class GroupService {
         ConversationResponse.LastMessageInfo lastMessageInfo = null;
         if (lastMsg != null) {
             lastMessageInfo = new ConversationResponse.LastMessageInfo(
+                    lastMsg.getId().toString(),
                     lastMsg.getText(), lastMsg.getCreatedAt(), lastMsg.getStatus(),
-                    lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage()
+                    lastMsg.getFileUrl(), lastMsg.getMimeType(), lastMsg.getIsVoiceMessage(),
+                    lastMsg.getEncrypted()
             );
         }
 

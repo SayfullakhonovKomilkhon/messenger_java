@@ -42,7 +42,8 @@ public class BotMessagingFacade {
                 request.fileUrl(),
                 request.mimeType(),
                 clientMessageId,
-                null, null, null, null
+                null, null, null, null,
+                false, null, null
         );
 
         chatService.sendAndNotify(botUserId, chatRequest);
@@ -59,7 +60,8 @@ public class BotMessagingFacade {
                 request.mimeType(),
                 clientMessageId,
                 "SENT",
-                null, null, null, null, null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null, null, null, null,
+                false, null, null
         );
     }
 
