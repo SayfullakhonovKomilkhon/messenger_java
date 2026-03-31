@@ -30,7 +30,8 @@ public class LocalFileService {
             "image/jpeg", "image/png", "image/gif", "image/webp",
             "application/pdf", "audio/mpeg", "audio/ogg", "audio/mp4",
             "audio/aac", "audio/x-aac", "audio/x-m4a",
-            "video/mp4", "video/quicktime"
+            "video/mp4", "video/quicktime",
+            "application/octet-stream"
     );
 
     private static final Map<String, String> MIME_TO_EXT = Map.ofEntries(
@@ -46,7 +47,8 @@ public class LocalFileService {
             Map.entry("audio/x-aac", ".aac"),
             Map.entry("audio/x-m4a", ".m4a"),
             Map.entry("video/mp4", ".mp4"),
-            Map.entry("video/quicktime", ".mov")
+            Map.entry("video/quicktime", ".mov"),
+            Map.entry("application/octet-stream", ".enc")
     );
 
     private final Tika tika = new Tika();
