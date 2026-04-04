@@ -7,6 +7,7 @@ public record AuthResponse(
 ) {
     public record UserInfo(
             String id,
+            String publicId,
             String name,
             String phone,
             String avatarUrl

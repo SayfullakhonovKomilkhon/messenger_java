@@ -30,7 +30,7 @@ public class UserService {
             throw new AppException("Search query must be at least 2 characters", HttpStatus.BAD_REQUEST);
         }
 
-        return userRepository.searchByNameOrUsername(query, currentUserId).stream()
+        return userRepository.searchByPublicIdOrName(query, currentUserId).stream()
                 .map(userMapper::toSearchResponse)
                 .toList();
     }

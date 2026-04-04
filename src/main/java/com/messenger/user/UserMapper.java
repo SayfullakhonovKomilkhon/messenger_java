@@ -14,9 +14,11 @@ public class UserMapper {
     public ProfileResponse toProfileResponse(User user) {
         return new ProfileResponse(
                 user.getId().toString(),
+                user.getPublicId(),
                 user.getName(),
                 user.getPhone(),
                 user.getUsername(),
+                user.getAiName(),
                 user.getAvatarUrl(),
                 user.getBio(),
                 user.getIsOnline(),
@@ -28,6 +30,7 @@ public class UserMapper {
     public UserSearchResponse toSearchResponse(User user) {
         return new UserSearchResponse(
                 user.getId().toString(),
+                user.getPublicId(),
                 user.getName(),
                 user.getUsername(),
                 user.getAvatarUrl(),

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,9 +12,16 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
+    private static final String PUBLIC_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int PUBLIC_ID_LENGTH = 8;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
+
+    @Column(name = "public_id", nullable = false, unique = true, length = 8)
+    private String publicId;
 
     @Column(nullable = false, unique = true, length = 20)
     private String phone;
@@ -23,6 +31,9 @@ public class User {
 
     @Column(unique = true, length = 50)
     private String username;
+
+    @Column(name = "ai_name", length = 100)
+    private String aiName;
 
     @Column(name = "avatar_url")
     private String avatarUrl;
@@ -58,6 +69,9 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (publicId == null || publicId.isBlank()) {
+            publicId = generatePublicId();
+        }
     }
 
     @PreUpdate
@@ -65,8 +79,19 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
+    public static String generatePublicId() {
+        StringBuilder sb = new StringBuilder(PUBLIC_ID_LENGTH);
+        for (int i = 0; i < PUBLIC_ID_LENGTH; i++) {
+            sb.append(PUBLIC_ID_CHARS.charAt(RANDOM.nextInt(PUBLIC_ID_CHARS.length())));
+        }
+        return sb.toString();
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+
+    public String getPublicId() { return publicId; }
+    public void setPublicId(String publicId) { this.publicId = publicId; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
@@ -76,6 +101,9 @@ public class User {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public String getAiName() { return aiName; }
+    public void setAiName(String aiName) { this.aiName = aiName; }
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }

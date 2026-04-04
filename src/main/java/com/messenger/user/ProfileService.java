@@ -45,6 +45,9 @@ public class ProfileService {
             }
             user.setUsername(request.username().isBlank() ? null : request.username());
         }
+        if (request.aiName() != null) {
+            user.setAiName(request.aiName().isBlank() ? null : request.aiName());
+        }
         if (request.bio() != null) {
             user.setBio(request.bio());
         }

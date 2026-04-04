@@ -17,9 +17,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByUsername(String username);
 
+    Optional<User> findByPublicId(String publicId);
+
     boolean existsByPhone(String phone);
 
-    @Query("SELECT u FROM User u WHERE (LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
-            "OR LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%'))) AND u.id <> :excludeId")
-    List<User> searchByNameOrUsername(@Param("query") String query, @Param("excludeId") UUID excludeId);
+    boolean existsByPublicId(String publicId);
+
+    @Query("SELECT u FROM User u WHERE " +
+            "(UPPER(u.publicId) = UPPER(:query) " +
+            "OR LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "AND u.id <> :excludeId")
+    List<User> searchByPublicIdOrName(@Param("query") String query, @Param("excludeId") UUID excludeId);
 }

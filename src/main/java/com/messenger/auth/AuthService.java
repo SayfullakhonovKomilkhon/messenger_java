@@ -52,9 +52,10 @@ public class AuthService {
         user.setPhone(request.phone());
         user.setName(request.name());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPublicId(generateUniquePublicId());
         user = userRepository.save(user);
 
-        log.info("User registered: {}", user.getId());
+        log.info("User registered: {} (publicId: {})", user.getId(), user.getPublicId());
         return buildAuthResponse(user);
     }
 
@@ -76,6 +77,7 @@ public class AuthService {
         user.setPhone(request.phone());
         user.setName(request.phone());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPublicId(generateUniquePublicId());
         user = userRepository.save(user);
         log.info("Auto-registered and logged in: {}", user.getId());
         return buildAuthResponse(user);
@@ -138,11 +140,22 @@ public class AuthService {
 
         AuthResponse.UserInfo userInfo = new AuthResponse.UserInfo(
                 userId,
+                user.getPublicId(),
                 user.getName(),
                 user.getPhone(),
                 user.getAvatarUrl()
         );
         return new AuthResponse(accessToken, refreshToken, userInfo);
+    }
+
+    private String generateUniquePublicId() {
+        for (int i = 0; i < 10; i++) {
+            String candidate = User.generatePublicId();
+            if (!userRepository.existsByPublicId(candidate)) {
+                return candidate;
+            }
+        }
+        throw new AppException("Failed to generate unique public ID", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     private void saveRefreshToken(User user, String tokenStr) {
