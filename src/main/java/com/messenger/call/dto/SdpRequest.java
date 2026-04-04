@@ -7,5 +7,10 @@ import java.util.UUID;
 
 public record SdpRequest(
         @NotNull UUID callId,
-        @NotBlank String sdp
-) {}
+        @NotBlank String sdp,
+        Boolean encrypted
+) {
+    public boolean isEncrypted() {
+        return encrypted != null && encrypted;
+    }
+}

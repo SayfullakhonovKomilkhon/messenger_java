@@ -194,30 +194,51 @@ public class CallService {
     }
 
     public void sendSdpOffer(UUID userId, SdpRequest request) {
-        validateSdp(request.sdp());
+        if (request.isEncrypted()) {
+            validateNotEmpty(request.sdp(), "SDP");
+        } else {
+            validateSdp(request.sdp());
+        }
         UUID otherId = getOtherParticipant(request.callId(), userId);
         CallEventResponse event = CallEventResponse.withData(
-                "SDP_OFFER", request.callId().toString(), Map.of("sdp", request.sdp())
+                "SDP_OFFER", request.callId().toString(),
+                Map.of("sdp", request.sdp(), "encrypted", request.isEncrypted())
         );
         notificationService.sendCallEvent(otherId, event);
     }
 
     public void sendSdpAnswer(UUID userId, SdpRequest request) {
-        validateSdp(request.sdp());
+        if (request.isEncrypted()) {
+            validateNotEmpty(request.sdp(), "SDP");
+        } else {
+            validateSdp(request.sdp());
+        }
         UUID otherId = getOtherParticipant(request.callId(), userId);
         CallEventResponse event = CallEventResponse.withData(
-                "SDP_ANSWER", request.callId().toString(), Map.of("sdp", request.sdp())
+                "SDP_ANSWER", request.callId().toString(),
+                Map.of("sdp", request.sdp(), "encrypted", request.isEncrypted())
         );
         notificationService.sendCallEvent(otherId, event);
     }
 
     public void sendIceCandidate(UUID userId, IceCandidateRequest request) {
-        validateIceCandidate(request.candidate());
+        if (request.isEncrypted()) {
+            validateNotEmpty(request.candidate(), "ICE candidate");
+        } else {
+            validateIceCandidate(request.candidate());
+        }
         UUID otherId = getOtherParticipant(request.callId(), userId);
         CallEventResponse event = CallEventResponse.withData(
-                "ICE_CANDIDATE", request.callId().toString(), Map.of("candidate", request.candidate())
+                "ICE_CANDIDATE", request.callId().toString(),
+                Map.of("candidate", request.candidate(), "encrypted", request.isEncrypted())
         );
         notificationService.sendCallEvent(otherId, event);
+    }
+
+    private void validateNotEmpty(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new AppException("Encrypted " + fieldName + " cannot be empty", HttpStatus.BAD_REQUEST);
+        }
     }
 
     public void validateSdp(String sdp) {
