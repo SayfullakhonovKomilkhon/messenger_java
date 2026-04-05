@@ -30,8 +30,36 @@ public class UserService {
             throw new AppException("Search query must be at least 2 characters", HttpStatus.BAD_REQUEST);
         }
 
-        return userRepository.searchByPublicIdOrName(query, currentUserId).stream()
-                .map(userMapper::toSearchResponse)
+        String q = query.trim();
+        return userRepository.searchByPublicIdOrName(q, currentUserId).stream()
+                .map(user -> {
+                    boolean matchedById = user.getPublicId() != null
+                            && user.getPublicId().equalsIgnoreCase(q);
+
+                    if (matchedById) {
+                        return new UserSearchResponse(
+                                user.getId().toString(),
+                                user.getPublicId(),
+                                null,
+                                null,
+                                null,
+                                user.getIsOnline(),
+                                user.getIsBot(),
+                                "publicId"
+                        );
+                    } else {
+                        return new UserSearchResponse(
+                                user.getId().toString(),
+                                null,
+                                user.getName(),
+                                user.getUsername(),
+                                user.getAvatarUrl(),
+                                user.getIsOnline(),
+                                user.getIsBot(),
+                                "name"
+                        );
+                    }
+                })
                 .toList();
     }
 

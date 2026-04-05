@@ -7,5 +7,6 @@ public record UserSearchResponse(
         String username,
         String avatarUrl,
         Boolean isOnline,
-        Boolean isBot
+        Boolean isBot,
+        String matchType
 ) {}
