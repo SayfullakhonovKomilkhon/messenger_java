@@ -155,6 +155,7 @@ public class ChatService {
                     new ConversationResponse.ParticipantInfo(
                             participant.getId().toString(),
                             participant.getName(),
+                            participant.getPublicId(),
                             participant.getAvatarUrl(),
                             participant.getIsOnline()
                     ),
@@ -189,6 +190,7 @@ public class ChatService {
                 new ConversationResponse.ParticipantInfo(
                         participant.getId().toString(),
                         participant.getName(),
+                        participant.getPublicId(),
                         participant.getAvatarUrl(),
                         participant.getIsOnline()
                 ),
@@ -562,6 +564,7 @@ public class ChatService {
             ConversationResponse.ParticipantInfo participantInfo = new ConversationResponse.ParticipantInfo(
                     other.getId().toString(),
                     other.getName(),
+                    other.getPublicId(),
                     other.getAvatarUrl(),
                     other.getIsOnline()
             );
@@ -654,6 +657,7 @@ public class ChatService {
                 new ConversationResponse.ParticipantInfo(
                         other.getId().toString(),
                         other.getName(),
+                        other.getPublicId(),
                         other.getAvatarUrl(),
                         other.getIsOnline()
                 ),

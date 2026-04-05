@@ -29,6 +29,7 @@ public record ConversationResponse(
     public record ParticipantInfo(
             String id,
             String name,
+            String publicId,
             String avatarUrl,
             Boolean isOnline
     ) {}
