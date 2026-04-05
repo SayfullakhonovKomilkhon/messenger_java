@@ -74,6 +74,14 @@ public class ProfileService {
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
         if (request.name() != null && !request.name().isBlank()) {
+            userRepository.findByName(request.name()).ifPresent(existing -> {
+                if (!existing.getId().equals(userId)) {
+                    throw new AppException("Этот ник уже занят", HttpStatus.CONFLICT);
+                }
+            });
+            userRepository.findByPublicId(request.name()).ifPresent(existing -> {
+                throw new AppException("Ник не может совпадать с ID пользователя", HttpStatus.CONFLICT);
+            });
             user.setName(request.name());
         }
         if (request.username() != null) {
