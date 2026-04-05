@@ -42,8 +42,10 @@ public class ProfileController {
 
     @Operation(summary = "Профиль другого пользователя")
     @GetMapping("/{id}")
-    public ResponseEntity<ProfileResponse> getUserProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok(profileService.getProfile(id));
+    public ResponseEntity<ProfileResponse> getUserProfile(@PathVariable UUID id,
+                                                           Authentication authentication) {
+        UUID viewerId = UUID.fromString((String) authentication.getPrincipal());
+        return ResponseEntity.ok(profileService.getPublicProfile(viewerId, id));
     }
 
     @Operation(summary = "Удалить аккаунт")

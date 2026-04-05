@@ -28,4 +28,15 @@ public interface ParticipantRepository extends JpaRepository<ConversationPartici
 
     @Query("SELECT COUNT(cp) FROM ConversationParticipant cp WHERE cp.conversation.id = :conversationId")
     long countByConversationId(@Param("conversationId") UUID conversationId);
+
+    @Query("SELECT cp FROM ConversationParticipant cp " +
+           "WHERE cp.conversation.type = com.messenger.chat.entity.ConversationType.DIRECT " +
+           "AND cp.conversation.id IN (" +
+           "  SELECT p1.conversation.id FROM ConversationParticipant p1 " +
+           "  JOIN ConversationParticipant p2 ON p1.conversation.id = p2.conversation.id " +
+           "  WHERE p1.user.id = :userId1 AND p2.user.id = :userId2" +
+           ") AND cp.user.id IN (:userId1, :userId2)")
+    List<ConversationParticipant> findDirectConversationParticipants(
+            @Param("userId1") UUID userId1,
+            @Param("userId2") UUID userId2);
 }

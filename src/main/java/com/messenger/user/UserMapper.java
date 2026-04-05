@@ -27,6 +27,33 @@ public class UserMapper {
         );
     }
 
+    public ProfileResponse toLimitedProfileResponse(User user, String searchMethod) {
+        String visiblePublicId = null;
+        String visibleAiName = null;
+
+        if ("publicId".equals(searchMethod)) {
+            visiblePublicId = user.getPublicId();
+        } else if ("aiName".equals(searchMethod)) {
+            visibleAiName = user.getAiName();
+        } else {
+            visiblePublicId = user.getPublicId();
+        }
+
+        return new ProfileResponse(
+                user.getId().toString(),
+                visiblePublicId,
+                null,
+                null,
+                null,
+                visibleAiName,
+                null,
+                null,
+                user.getIsOnline(),
+                user.getIsBot(),
+                user.getLastSeenAt() != null ? user.getLastSeenAt().toString() : null
+        );
+    }
+
     public UserSearchResponse toSearchResponse(User user) {
         return new UserSearchResponse(
                 user.getId().toString(),
