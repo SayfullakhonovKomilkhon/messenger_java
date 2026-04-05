@@ -31,10 +31,12 @@ public class UserService {
         }
 
         String q = query.trim();
-        return userRepository.searchByPublicIdOrName(q, currentUserId).stream()
+        if (q.startsWith("#")) q = q.substring(1).trim();
+        final String searchQuery = q;
+        return userRepository.searchByPublicIdOrName(searchQuery, currentUserId).stream()
                 .map(user -> {
                     boolean matchedById = user.getPublicId() != null
-                            && user.getPublicId().equalsIgnoreCase(q);
+                            && user.getPublicId().equalsIgnoreCase(searchQuery);
 
                     if (matchedById) {
                         return new UserSearchResponse(
