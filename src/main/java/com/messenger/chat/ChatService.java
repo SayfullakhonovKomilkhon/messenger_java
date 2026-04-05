@@ -453,6 +453,17 @@ public class ChatService {
         cp.setTrustStatus(status);
         participantRepository.save(cp);
         log.info("User {} set trust={} for conversation {}", userId, status, conversationId);
+
+        List<UUID> otherIds = getOtherParticipantIds(conversationId, userId);
+        Map<String, Object> trustEvent = Map.of(
+                "type", "trust_updated",
+                "conversationId", conversationId.toString(),
+                "userId", userId.toString(),
+                "trustStatus", status
+        );
+        for (UUID otherId : otherIds) {
+            notificationService.sendToUser(otherId, "/queue/messages", trustEvent);
+        }
     }
 
     @Transactional
