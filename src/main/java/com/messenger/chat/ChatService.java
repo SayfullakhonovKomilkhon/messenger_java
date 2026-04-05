@@ -625,6 +625,9 @@ public class ChatService {
         boolean mutualTrust = "TRUSTED".equals(myCp.getTrustStatus())
                 && "TRUSTED".equals(otherCp.getTrustStatus());
 
+        String sm = myCp.getSearchMethod();
+        if (sm == null) sm = otherCp.getSearchMethod();
+
         ConversationResponse.ParticipantInfo pInfo;
         if (mutualTrust) {
             pInfo = new ConversationResponse.ParticipantInfo(
@@ -636,16 +639,22 @@ public class ChatService {
                     other.getIsOnline()
             );
         } else {
-            String sm = myCp.getSearchMethod();
+            String visibleName = null;
+            if ("name".equals(sm)) {
+                visibleName = other.getName();
+            }
             pInfo = new ConversationResponse.ParticipantInfo(
                     other.getId().toString(),
                     "publicId".equals(sm) ? other.getPublicId() : null,
-                    null,
+                    visibleName,
                     "aiName".equals(sm) ? other.getAiName() : null,
                     null,
                     other.getIsOnline()
             );
         }
+
+        String effectiveSm = myCp.getSearchMethod();
+        if (effectiveSm == null) effectiveSm = otherCp.getSearchMethod();
 
         return new ConversationResponse(
                 convId.toString(),
@@ -657,7 +666,7 @@ public class ChatService {
                 Boolean.TRUE.equals(myCp.getIsMuted()),
                 myCp.getTrustStatus(),
                 otherCp.getTrustStatus(),
-                myCp.getSearchMethod()
+                effectiveSm
         );
     }
 
