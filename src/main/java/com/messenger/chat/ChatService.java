@@ -587,7 +587,7 @@ public class ChatService {
         systemMsg.setConversationId(conversationId);
         systemMsg.setSenderId(userId);
         systemMsg.setText("Запрос отклонён");
-        systemMsg.setClientMessageId("system-decline-" + conversationId);
+        systemMsg.setClientMessageId("sys-" + UUID.randomUUID().toString().substring(0, 32));
         systemMsg.setStatus("SENT");
         messageRepository.save(systemMsg);
 
