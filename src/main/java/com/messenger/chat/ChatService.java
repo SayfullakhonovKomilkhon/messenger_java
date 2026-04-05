@@ -583,6 +583,19 @@ public class ChatService {
                 .findFirst()
                 .orElse(null);
 
+        Message systemMsg = new Message();
+        systemMsg.setConversationId(conversationId);
+        systemMsg.setSenderId(userId);
+        systemMsg.setText("Запрос отклонён");
+        systemMsg.setClientMessageId("system-decline-" + conversationId);
+        systemMsg.setStatus("SENT");
+        messageRepository.save(systemMsg);
+
+        if (senderId != null) {
+            MessageResponse msgResponse = toMessageResponse(systemMsg);
+            notificationService.sendToUser(senderId, "/queue/messages", msgResponse);
+        }
+
         if (blockUser && senderId != null && !blockService.isBlocked(userId, senderId)) {
             blockService.blockUser(userId, senderId);
         }
