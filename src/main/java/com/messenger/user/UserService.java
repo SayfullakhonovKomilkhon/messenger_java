@@ -37,24 +37,38 @@ public class UserService {
                 .map(user -> {
                     boolean matchedById = user.getPublicId() != null
                             && user.getPublicId().equalsIgnoreCase(searchQuery);
+                    boolean matchedByAiName = user.getAiName() != null
+                            && user.getAiName().toLowerCase().contains(searchQuery.toLowerCase());
 
                     if (matchedById) {
                         return new UserSearchResponse(
                                 user.getId().toString(),
                                 user.getPublicId(),
                                 null,
+                                null,
                                 user.getIsOnline(),
                                 user.getIsBot(),
                                 "publicId"
                         );
-                    } else {
+                    } else if (matchedByAiName) {
                         return new UserSearchResponse(
                                 user.getId().toString(),
+                                null,
                                 null,
                                 user.getAiName(),
                                 user.getIsOnline(),
                                 user.getIsBot(),
                                 "aiName"
+                        );
+                    } else {
+                        return new UserSearchResponse(
+                                user.getId().toString(),
+                                null,
+                                user.getName(),
+                                null,
+                                user.getIsOnline(),
+                                user.getIsBot(),
+                                "name"
                         );
                     }
                 })
