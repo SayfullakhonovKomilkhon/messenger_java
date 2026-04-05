@@ -77,7 +77,7 @@ public class BotMessagingFacade {
 
     public ConversationResponse startConversation(Bot bot, UUID targetUserId) {
         ensureActive(bot);
-        return chatService.createOrGetConversation(bot.getUserId(), targetUserId);
+        return chatService.createOrGetConversation(bot.getUserId(), targetUserId, null);
     }
 
     private void ensureActive(Bot bot) {

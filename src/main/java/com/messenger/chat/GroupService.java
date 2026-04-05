@@ -395,7 +395,8 @@ public class GroupService {
                 lastMessageInfo,
                 myCp != null && myCp.getUnreadCount() != null ? myCp.getUnreadCount() : 0,
                 myCp != null && Boolean.TRUE.equals(myCp.getIsPinned()),
-                myCp != null && Boolean.TRUE.equals(myCp.getIsMuted())
+                myCp != null && Boolean.TRUE.equals(myCp.getIsMuted()),
+                null, null, null
         );
     }
 
