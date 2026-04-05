@@ -31,9 +31,7 @@ public class UserMapper {
         return new UserSearchResponse(
                 user.getId().toString(),
                 user.getPublicId(),
-                user.getName(),
-                user.getUsername(),
-                user.getAvatarUrl(),
+                user.getAiName(),
                 user.getIsOnline(),
                 user.getIsBot(),
                 null

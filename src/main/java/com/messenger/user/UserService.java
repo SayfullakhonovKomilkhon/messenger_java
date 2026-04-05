@@ -33,7 +33,7 @@ public class UserService {
         String q = query.trim();
         if (q.startsWith("#")) q = q.substring(1).trim();
         final String searchQuery = q;
-        return userRepository.searchByPublicIdOrName(searchQuery, currentUserId).stream()
+        return userRepository.searchByPublicIdOrAiName(searchQuery, currentUserId).stream()
                 .map(user -> {
                     boolean matchedById = user.getPublicId() != null
                             && user.getPublicId().equalsIgnoreCase(searchQuery);
@@ -43,8 +43,6 @@ public class UserService {
                                 user.getId().toString(),
                                 user.getPublicId(),
                                 null,
-                                null,
-                                null,
                                 user.getIsOnline(),
                                 user.getIsBot(),
                                 "publicId"
@@ -53,12 +51,10 @@ public class UserService {
                         return new UserSearchResponse(
                                 user.getId().toString(),
                                 null,
-                                user.getName(),
-                                user.getUsername(),
-                                user.getAvatarUrl(),
+                                user.getAiName(),
                                 user.getIsOnline(),
                                 user.getIsBot(),
-                                "name"
+                                "aiName"
                         );
                     }
                 })

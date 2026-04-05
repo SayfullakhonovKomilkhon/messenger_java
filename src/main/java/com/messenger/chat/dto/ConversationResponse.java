@@ -12,7 +12,10 @@ public record ConversationResponse(
         LastMessageInfo lastMessage,
         int unreadCount,
         boolean isPinned,
-        boolean isMuted
+        boolean isMuted,
+        String myTrustStatus,
+        String otherTrustStatus,
+        String searchMethod
 ) {
     public ConversationResponse(
             String id,
@@ -21,15 +24,20 @@ public record ConversationResponse(
             LastMessageInfo lastMessage,
             int unreadCount,
             boolean isPinned,
-            boolean isMuted
+            boolean isMuted,
+            String myTrustStatus,
+            String otherTrustStatus,
+            String searchMethod
     ) {
-        this(id, "DIRECT", updatedAt, participant, null, lastMessage, unreadCount, isPinned, isMuted);
+        this(id, "DIRECT", updatedAt, participant, null, lastMessage,
+                unreadCount, isPinned, isMuted, myTrustStatus, otherTrustStatus, searchMethod);
     }
 
     public record ParticipantInfo(
             String id,
-            String name,
             String publicId,
+            String name,
+            String aiName,
             String avatarUrl,
             Boolean isOnline
     ) {}

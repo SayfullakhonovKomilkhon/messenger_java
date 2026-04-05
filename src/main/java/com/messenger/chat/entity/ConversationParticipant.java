@@ -45,6 +45,12 @@ public class ConversationParticipant {
     @Column(name = "role", length = 10)
     private GroupRole role = GroupRole.MEMBER;
 
+    @Column(name = "trust_status", length = 10)
+    private String trustStatus = "PENDING";
+
+    @Column(name = "search_method", length = 10)
+    private String searchMethod;
+
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 
@@ -82,6 +88,12 @@ public class ConversationParticipant {
 
     public GroupRole getRole() { return role; }
     public void setRole(GroupRole role) { this.role = role; }
+
+    public String getTrustStatus() { return trustStatus; }
+    public void setTrustStatus(String trustStatus) { this.trustStatus = trustStatus; }
+
+    public String getSearchMethod() { return searchMethod; }
+    public void setSearchMethod(String searchMethod) { this.searchMethod = searchMethod; }
 
     public LocalDateTime getJoinedAt() { return joinedAt; }
     public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }

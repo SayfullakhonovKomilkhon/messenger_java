@@ -124,7 +124,7 @@ public class ChatService {
     }
 
     @Transactional
-    public ConversationResponse createOrGetConversation(UUID userId, UUID participantId) {
+    public ConversationResponse createOrGetConversation(UUID userId, UUID participantId, String searchMethod) {
         if (userId.equals(participantId)) {
             throw new AppException("Cannot create conversation with yourself", HttpStatus.BAD_REQUEST);
         }
@@ -144,26 +144,11 @@ public class ChatService {
         Optional<Conversation> existing = conversationRepository.findDirectConversation(userId, participantId);
         if (existing.isPresent()) {
             Conversation conv = existing.get();
-            ConversationParticipant myParticipant = conversationRepository.findParticipant(conv.getId(), userId)
+            ConversationParticipant myCp = conversationRepository.findParticipant(conv.getId(), userId)
                     .orElse(null);
-            int unread = myParticipant != null && myParticipant.getUnreadCount() != null
-                    ? myParticipant.getUnreadCount() : 0;
-
-            return new ConversationResponse(
-                    conv.getId().toString(),
-                    conv.getUpdatedAt(),
-                    new ConversationResponse.ParticipantInfo(
-                            participant.getId().toString(),
-                            participant.getName(),
-                            participant.getPublicId(),
-                            participant.getAvatarUrl(),
-                            participant.getIsOnline()
-                    ),
-                    null,
-                    unread,
-                    myParticipant != null && Boolean.TRUE.equals(myParticipant.getIsPinned()),
-                    myParticipant != null && Boolean.TRUE.equals(myParticipant.getIsMuted())
-            );
+            ConversationParticipant otherCp = conversationRepository.findParticipant(conv.getId(), participantId)
+                    .orElse(null);
+            return buildDirectConversationResponse(conv.getId(), conv, myCp, otherCp, null);
         }
 
         Conversation conversation = new Conversation();
@@ -174,31 +159,20 @@ public class ChatService {
         cp1.setConversation(conversation);
         cp1.setUser(currentUser);
         cp1.setStatus("ACTIVE");
+        cp1.setTrustStatus("PENDING");
+        cp1.setSearchMethod(searchMethod);
         participantRepository.save(cp1);
 
         ConversationParticipant cp2 = new ConversationParticipant();
         cp2.setConversation(conversation);
         cp2.setUser(participant);
         cp2.setStatus("PENDING");
+        cp2.setTrustStatus("PENDING");
         participantRepository.save(cp2);
 
         log.info("Conversation created between {} and {} (recipient PENDING)", userId, participantId);
 
-        return new ConversationResponse(
-                conversation.getId().toString(),
-                conversation.getUpdatedAt(),
-                new ConversationResponse.ParticipantInfo(
-                        participant.getId().toString(),
-                        participant.getName(),
-                        participant.getPublicId(),
-                        participant.getAvatarUrl(),
-                        participant.getIsOnline()
-                ),
-                null,
-                0,
-                false,
-                false
-        );
+        return buildDirectConversationResponse(conversation.getId(), conversation, cp1, cp2, null);
     }
 
     @Transactional
@@ -470,6 +444,18 @@ public class ChatService {
     }
 
     @Transactional
+    public void updateTrustStatus(UUID conversationId, UUID userId, String status) {
+        if (!"TRUSTED".equals(status) && !"DECLINED".equals(status)) {
+            throw new AppException("Invalid trust status", HttpStatus.BAD_REQUEST);
+        }
+        ConversationParticipant cp = conversationRepository.findParticipant(conversationId, userId)
+                .orElseThrow(() -> new AppException("Not a participant", HttpStatus.FORBIDDEN));
+        cp.setTrustStatus(status);
+        participantRepository.save(cp);
+        log.info("User {} set trust={} for conversation {}", userId, status, conversationId);
+    }
+
+    @Transactional
     public void pinConversation(UUID conversationId, UUID userId, boolean pinned) {
         ConversationParticipant cp = conversationRepository.findParticipant(conversationId, userId)
                 .orElseThrow(() -> new AppException("Not a participant", HttpStatus.FORBIDDEN));
@@ -560,24 +546,9 @@ public class ChatService {
                     .findFirst().orElse(null);
             if (otherParticipation == null) continue;
 
-            User other = otherParticipation.getUser();
-            ConversationResponse.ParticipantInfo participantInfo = new ConversationResponse.ParticipantInfo(
-                    other.getId().toString(),
-                    other.getName(),
-                    other.getPublicId(),
-                    other.getAvatarUrl(),
-                    other.getIsOnline()
-            );
-
-            result.add(new ConversationResponse(
-                    convId.toString(),
-                    myParticipation.getConversation().getUpdatedAt(),
-                    participantInfo,
-                    buildLastMessageInfo(lastMessages.get(convId)),
-                    myParticipation.getUnreadCount() != null ? myParticipation.getUnreadCount() : 0,
-                    Boolean.TRUE.equals(myParticipation.getIsPinned()),
-                    Boolean.TRUE.equals(myParticipation.getIsMuted())
-            ));
+            ConversationResponse.LastMessageInfo lmi = buildLastMessageInfo(lastMessages.get(convId));
+            result.add(buildDirectConversationResponse(convId, myParticipation.getConversation(),
+                    myParticipation, otherParticipation, lmi));
         }
 
         result.sort(BY_UPDATED_DESC);
@@ -651,20 +622,42 @@ public class ChatService {
             UUID convId, Conversation conv, ConversationParticipant myCp,
             ConversationParticipant otherCp, ConversationResponse.LastMessageInfo lastMsg) {
         User other = otherCp.getUser();
+        boolean mutualTrust = "TRUSTED".equals(myCp.getTrustStatus())
+                && "TRUSTED".equals(otherCp.getTrustStatus());
+
+        ConversationResponse.ParticipantInfo pInfo;
+        if (mutualTrust) {
+            pInfo = new ConversationResponse.ParticipantInfo(
+                    other.getId().toString(),
+                    other.getPublicId(),
+                    other.getName(),
+                    other.getAiName(),
+                    other.getAvatarUrl(),
+                    other.getIsOnline()
+            );
+        } else {
+            String sm = myCp.getSearchMethod();
+            pInfo = new ConversationResponse.ParticipantInfo(
+                    other.getId().toString(),
+                    "publicId".equals(sm) ? other.getPublicId() : null,
+                    null,
+                    "aiName".equals(sm) ? other.getAiName() : null,
+                    null,
+                    other.getIsOnline()
+            );
+        }
+
         return new ConversationResponse(
                 convId.toString(),
                 conv.getUpdatedAt(),
-                new ConversationResponse.ParticipantInfo(
-                        other.getId().toString(),
-                        other.getName(),
-                        other.getPublicId(),
-                        other.getAvatarUrl(),
-                        other.getIsOnline()
-                ),
+                pInfo,
                 lastMsg,
                 myCp.getUnreadCount() != null ? myCp.getUnreadCount() : 0,
                 Boolean.TRUE.equals(myCp.getIsPinned()),
-                Boolean.TRUE.equals(myCp.getIsMuted())
+                Boolean.TRUE.equals(myCp.getIsMuted()),
+                myCp.getTrustStatus(),
+                otherCp.getTrustStatus(),
+                myCp.getSearchMethod()
         );
     }
 
@@ -702,7 +695,8 @@ public class ChatService {
                 lastMsg,
                 myCp.getUnreadCount() != null ? myCp.getUnreadCount() : 0,
                 Boolean.TRUE.equals(myCp.getIsPinned()),
-                Boolean.TRUE.equals(myCp.getIsMuted())
+                Boolean.TRUE.equals(myCp.getIsMuted()),
+                null, null, null
         );
     }
 

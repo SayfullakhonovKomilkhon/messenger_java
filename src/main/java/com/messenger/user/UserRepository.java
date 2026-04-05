@@ -25,7 +25,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u WHERE " +
             "(UPPER(u.publicId) = UPPER(:query) " +
-            "OR LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "OR LOWER(u.aiName) LIKE LOWER(CONCAT('%', :query, '%'))) " +
             "AND u.id <> :excludeId")
-    List<User> searchByPublicIdOrName(@Param("query") String query, @Param("excludeId") UUID excludeId);
+    List<User> searchByPublicIdOrAiName(@Param("query") String query, @Param("excludeId") UUID excludeId);
 }

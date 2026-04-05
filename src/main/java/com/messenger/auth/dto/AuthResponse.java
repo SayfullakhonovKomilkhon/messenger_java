@@ -10,6 +10,7 @@ public record AuthResponse(
             String publicId,
             String name,
             String phone,
-            String avatarUrl
+            String avatarUrl,
+            String walletAddress
     ) {}
 }

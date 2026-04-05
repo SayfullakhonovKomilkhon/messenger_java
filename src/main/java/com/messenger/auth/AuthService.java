@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -53,10 +54,11 @@ public class AuthService {
         user.setName(request.name());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setPublicId(generateUniquePublicId());
+        user.setWalletAddress(generateWalletAddress());
         user = userRepository.save(user);
 
         log.info("User registered: {} (publicId: {})", user.getId(), user.getPublicId());
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, true);
     }
 
     @Transactional
@@ -69,18 +71,18 @@ public class AuthService {
                 throw new AppException("Invalid credentials", HttpStatus.UNAUTHORIZED);
             }
             log.info("User logged in: {}", user.getId());
-            return buildAuthResponse(user);
+            return buildAuthResponse(user, false);
         }
 
-        // Auto-register: user not found — create account on the fly
         User user = new User();
         user.setPhone(request.phone());
         user.setName(request.phone());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setPublicId(generateUniquePublicId());
+        user.setWalletAddress(generateWalletAddress());
         user = userRepository.save(user);
         log.info("Auto-registered and logged in: {}", user.getId());
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, true);
     }
 
     @Transactional
@@ -132,7 +134,7 @@ public class AuthService {
         return Map.of("success", true);
     }
 
-    private AuthResponse buildAuthResponse(User user) {
+    private AuthResponse buildAuthResponse(User user, boolean isNewRegistration) {
         String userId = user.getId().toString();
         String accessToken = jwtService.generateAccessToken(userId);
         String refreshToken = jwtService.generateRefreshToken(userId);
@@ -143,9 +145,18 @@ public class AuthService {
                 user.getPublicId(),
                 user.getName(),
                 user.getPhone(),
-                user.getAvatarUrl()
+                user.getAvatarUrl(),
+                isNewRegistration ? user.getWalletAddress() : null
         );
         return new AuthResponse(accessToken, refreshToken, userInfo);
+    }
+
+    private String generateWalletAddress() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        StringBuilder hex = new StringBuilder("0x");
+        for (byte b : bytes) hex.append(String.format("%02x", b));
+        return hex.toString();
     }
 
     private String generateUniquePublicId() {

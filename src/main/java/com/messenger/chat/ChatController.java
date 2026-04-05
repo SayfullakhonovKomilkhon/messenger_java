@@ -50,7 +50,18 @@ public class ChatController {
             @RequestBody @Valid CreateConversationRequest request,
             Authentication authentication) {
         UUID userId = UUID.fromString((String) authentication.getPrincipal());
-        return ResponseEntity.ok(chatService.createOrGetConversation(userId, request.participantId()));
+        return ResponseEntity.ok(chatService.createOrGetConversation(userId, request.participantId(), request.searchMethod()));
+    }
+
+    @Operation(summary = "Обновить статус доверия")
+    @PatchMapping("/{id}/trust")
+    public ResponseEntity<Map<String, String>> updateTrust(
+            @PathVariable UUID id,
+            @RequestParam String status,
+            Authentication authentication) {
+        UUID userId = UUID.fromString((String) authentication.getPrincipal());
+        chatService.updateTrustStatus(id, userId, status);
+        return ResponseEntity.ok(Map.of("trustStatus", status));
     }
 
     @Operation(summary = "Закрепить/открепить диалог")
