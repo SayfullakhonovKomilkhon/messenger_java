@@ -35,7 +35,8 @@ public class UserMapper {
                 user.getUsername(),
                 user.getAvatarUrl(),
                 user.getIsOnline(),
-                user.getIsBot()
+                user.getIsBot(),
+                null
         );
     }
 
