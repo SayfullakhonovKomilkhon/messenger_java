@@ -53,4 +53,9 @@ public class BotUserService {
         if (avatarUrl != null) botUser.setAvatarUrl(avatarUrl);
         userRepository.save(botUser);
     }
+
+    @Transactional
+    public void deleteBotUser(UUID botUserId) {
+        userRepository.deleteById(botUserId);
+    }
 }

@@ -46,23 +46,9 @@ public class BotMessagingFacade {
                 false, null, null
         );
 
-        chatService.sendAndNotify(botUserId, chatRequest);
+        MessageResponse response = chatService.sendAndNotify(botUserId, chatRequest);
         log.debug("Bot {} sent message to conversation {}", bot.getId(), request.conversationId());
-
-        return new MessageResponse(
-                null,
-                request.conversationId().toString(),
-                botUserId.toString(),
-                bot.getName(),
-                bot.getAvatarUrl(),
-                request.text(),
-                request.fileUrl(),
-                request.mimeType(),
-                clientMessageId,
-                "SENT",
-                null, null, null, null, null, null, null, null, null, null, null,
-                false, null, null
-        );
+        return response;
     }
 
     public List<ConversationResponse> getConversations(Bot bot) {

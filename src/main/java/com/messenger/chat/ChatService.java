@@ -227,7 +227,7 @@ public class ChatService {
     }
 
     @Transactional
-    public void sendAndNotify(UUID senderId, SendMessageRequest request) {
+    public MessageResponse sendAndNotify(UUID senderId, SendMessageRequest request) {
         MessageResponse response = sendMessage(senderId, request);
 
         User sender = userRepository.findById(senderId).orElse(null);
@@ -250,6 +250,7 @@ public class ChatService {
         List<UUID> allParticipantIds = new ArrayList<>(recipientIds);
         allParticipantIds.add(senderId);
         eventPublisher.publishEvent(new MessageSentEvent(this, response, allParticipantIds));
+        return response;
     }
 
     @Transactional
