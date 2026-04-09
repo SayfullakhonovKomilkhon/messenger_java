@@ -30,9 +30,11 @@ public class BotUserService {
 
     @Transactional
     public UUID createBotUser(String name, String username, String avatarUrl, String description) {
+        // users.name is globally unique; bot display name lives on bots.name. Internal row uses stable prefix.
+        String internalName = "BOT_" + UUID.randomUUID().toString().replace("-", "");
         User botUser = new User();
-        botUser.setName(name);
-        botUser.setUsername(username);
+        botUser.setName(internalName);
+        botUser.setUsername(normalizeUsername(username));
         botUser.setAvatarUrl(avatarUrl);
         botUser.setIsBot(true);
         botUser.setPhone("bot_" + UUID.randomUUID().toString().substring(0, 12));
@@ -47,10 +49,21 @@ public class BotUserService {
     public void updateBotUser(UUID botUserId, String name, String username, String bio, String avatarUrl) {
         User botUser = userRepository.findById(botUserId)
                 .orElseThrow(() -> new AppException("Bot user not found", HttpStatus.NOT_FOUND));
-        if (name != null) botUser.setName(name);
-        if (username != null) botUser.setUsername(username);
+        // Do not change users.name for bots — it must stay unique; display name is on bots table.
+        if (name != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
+            botUser.setName(name);
+        }
+        if (username != null) {
+            botUser.setUsername(normalizeUsername(username));
+        }
         if (bio != null) botUser.setBio(bio);
         if (avatarUrl != null) botUser.setAvatarUrl(avatarUrl);
         userRepository.save(botUser);
+    }
+
+    private static String normalizeUsername(String username) {
+        if (username == null) return null;
+        String t = username.trim();
+        return t.isEmpty() ? null : t;
     }
 }

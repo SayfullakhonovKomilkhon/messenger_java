@@ -6,6 +6,8 @@ import com.messenger.common.exception.AppException;
 import com.messenger.user.dto.ProfileResponse;
 import com.messenger.user.dto.UpdateProfileRequest;
 import com.messenger.user.entity.User;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,23 +21,30 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final ParticipantRepository participantRepository;
+    private final MessageSource messageSource;
 
     public ProfileService(UserRepository userRepository, UserMapper userMapper,
-                          ParticipantRepository participantRepository) {
+                          ParticipantRepository participantRepository,
+                          MessageSource messageSource) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.participantRepository = participantRepository;
+        this.messageSource = messageSource;
+    }
+
+    private String msg(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 
     public ProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(msg("user.not.found"), HttpStatus.NOT_FOUND));
         return userMapper.toProfileResponse(user);
     }
 
     public ProfileResponse getPublicProfile(UUID viewerId, UUID targetId) {
         User user = userRepository.findById(targetId)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(msg("user.not.found"), HttpStatus.NOT_FOUND));
 
         if (viewerId.equals(targetId)) {
             return userMapper.toProfileResponse(user);
@@ -71,16 +80,16 @@ public class ProfileService {
     @Transactional
     public ProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(msg("user.not.found"), HttpStatus.NOT_FOUND));
 
         if (request.name() != null && !request.name().isBlank()) {
             userRepository.findByName(request.name()).ifPresent(existing -> {
                 if (!existing.getId().equals(userId)) {
-                    throw new AppException("Этот ник уже занят", HttpStatus.CONFLICT);
+                    throw new AppException(msg("nickname.taken"), HttpStatus.CONFLICT);
                 }
             });
             userRepository.findByPublicId(request.name()).ifPresent(existing -> {
-                throw new AppException("Ник не может совпадать с ID пользователя", HttpStatus.CONFLICT);
+                throw new AppException(msg("nickname.conflicts.id"), HttpStatus.CONFLICT);
             });
             user.setName(request.name());
         }

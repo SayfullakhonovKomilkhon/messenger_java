@@ -4,21 +4,21 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateProfileRequest(
-        @Size(min = 1, max = 100, message = "Ник должен быть от 1 до 100 символов")
-        @Pattern(regexp = "^[а-яА-ЯёЁ\\s-]*$", message = "Ник может содержать только русские буквы, пробел и дефис")
+        @Size(min = 1, max = 100, message = "{nick.size}")
+        @Pattern(regexp = "^[а-яА-ЯёЁ\\s-]*$", message = "{nick.pattern}")
         String name,
 
-        @Size(max = 50, message = "Имя пользователя не более 50 символов")
-        @Pattern(regexp = "^[a-zA-Z0-9._-]*$", message = "Имя пользователя может содержать только буквы, цифры, точку, дефис и подчёркивание")
+        @Size(max = 50, message = "{username.size}")
+        @Pattern(regexp = "^[a-zA-Z0-9._-]*$", message = "{username.pattern}")
         String username,
 
-        @Size(max = 100, message = "Имя аватара не более 100 символов")
-        @Pattern(regexp = "^[а-яА-ЯёЁ\\s-]*$", message = "Имя аватара может содержать только русские буквы, пробел и дефис")
+        @Size(max = 100, message = "{ainame.size}")
+        @Pattern(regexp = "^[а-яА-ЯёЁ\\s-]*$", message = "{ainame.pattern}")
         String aiName,
 
-        @Size(max = 70, message = "Био не более 70 символов")
+        @Size(max = 70, message = "{bio.size}")
         String bio,
 
-        @Size(max = 500, message = "URL аватара не более 500 символов")
+        @Size(max = 500, message = "{avatar.size}")
         String avatarUrl
 ) {}

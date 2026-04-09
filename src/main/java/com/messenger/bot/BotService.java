@@ -6,6 +6,7 @@ import com.messenger.bot.dto.UpdateBotRequest;
 import com.messenger.bot.entity.Bot;
 import com.messenger.common.exception.AppException;
 import com.messenger.user.BotUserService;
+import com.messenger.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -25,10 +27,12 @@ public class BotService {
 
     private final BotRepository botRepository;
     private final BotUserService botUserService;
+    private final UserRepository userRepository;
 
-    public BotService(BotRepository botRepository, BotUserService botUserService) {
+    public BotService(BotRepository botRepository, BotUserService botUserService, UserRepository userRepository) {
         this.botRepository = botRepository;
         this.botUserService = botUserService;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -37,14 +41,15 @@ public class BotService {
             throw new AppException("Owner not found", HttpStatus.NOT_FOUND);
         }
 
-        if (request.username() != null && !request.username().isBlank()) {
-            if (botRepository.existsByUsername(request.username())) {
+        String username = normalizeUsername(request.username());
+        if (username != null) {
+            if (botRepository.existsByUsername(username) || userRepository.existsByUsername(username)) {
                 throw new AppException("Bot username already taken", HttpStatus.CONFLICT);
             }
         }
 
         UUID botUserId = botUserService.createBotUser(
-                request.name(), request.username(), request.avatarUrl(), request.description());
+                request.name(), username, request.avatarUrl(), request.description());
 
         String token = generateToken();
 
@@ -52,7 +57,7 @@ public class BotService {
         bot.setUserId(botUserId);
         bot.setOwnerId(ownerId);
         bot.setName(request.name());
-        bot.setUsername(request.username());
+        bot.setUsername(username);
         bot.setDescription(request.description());
         bot.setAvatarUrl(request.avatarUrl());
         bot.setToken(token);
@@ -87,17 +92,22 @@ public class BotService {
 
         if (request.name() != null) bot.setName(request.name());
         if (request.username() != null) {
-            if (!request.username().equals(bot.getUsername()) && botRepository.existsByUsername(request.username())) {
-                throw new AppException("Bot username already taken", HttpStatus.CONFLICT);
+            String newUsername = normalizeUsername(request.username());
+            if (!Objects.equals(newUsername, bot.getUsername())) {
+                if (newUsername != null
+                        && (botRepository.existsByUsername(newUsername) || userRepository.existsByUsername(newUsername))) {
+                    throw new AppException("Bot username already taken", HttpStatus.CONFLICT);
+                }
             }
-            bot.setUsername(request.username());
+            bot.setUsername(newUsername);
         }
         if (request.description() != null) bot.setDescription(request.description());
         if (request.avatarUrl() != null) bot.setAvatarUrl(request.avatarUrl());
         if (request.webhookUrl() != null) bot.setWebhookUrl(request.webhookUrl());
 
+        // Display name lives on Bot; users.name for bot rows stays internal (unique).
         botUserService.updateBotUser(bot.getUserId(),
-                request.name(), request.username(), request.description(), request.avatarUrl());
+                null, request.username(), request.description(), request.avatarUrl());
 
         bot = botRepository.save(bot);
         return toResponse(bot);
@@ -136,6 +146,12 @@ public class BotService {
 
     public Bot findByUserId(UUID userId) {
         return botRepository.findByUserId(userId).orElse(null);
+    }
+
+    private static String normalizeUsername(String username) {
+        if (username == null) return null;
+        String t = username.trim();
+        return t.isEmpty() ? null : t;
     }
 
     private String generateToken() {

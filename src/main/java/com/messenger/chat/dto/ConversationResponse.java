@@ -39,7 +39,8 @@ public record ConversationResponse(
             String name,
             String aiName,
             String avatarUrl,
-            Boolean isOnline
+            Boolean isOnline,
+            Boolean isBot
     ) {}
 
     public record GroupInfo(
