@@ -25,10 +25,12 @@ public class BotApiController {
 
     private final BotService botService;
     private final BotMessagingFacade messagingFacade;
+    private final BotRepository botRepository;
 
-    public BotApiController(BotService botService, BotMessagingFacade messagingFacade) {
+    public BotApiController(BotService botService, BotMessagingFacade messagingFacade, BotRepository botRepository) {
         this.botService = botService;
         this.messagingFacade = messagingFacade;
+        this.botRepository = botRepository;
     }
 
     @PostMapping("/sendMessage")
@@ -70,7 +72,17 @@ public class BotApiController {
             @Valid @RequestBody BotSetWebhookRequest request) {
         Bot bot = resolveBot(authHeader);
         bot.setWebhookUrl(request.url());
+        botRepository.save(bot);
         return ResponseEntity.ok(Map.of("status", "ok", "webhook_url", request.url() != null ? request.url() : ""));
+    }
+
+    @DeleteMapping("/webhook")
+    public ResponseEntity<Map<String, String>> deleteWebhook(
+            @RequestHeader("Authorization") String authHeader) {
+        Bot bot = resolveBot(authHeader);
+        bot.setWebhookUrl(null);
+        botRepository.save(bot);
+        return ResponseEntity.ok(Map.of("status", "ok", "webhook_url", ""));
     }
 
     @GetMapping("/me")

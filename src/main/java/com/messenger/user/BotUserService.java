@@ -61,6 +61,11 @@ public class BotUserService {
         userRepository.save(botUser);
     }
 
+    @Transactional
+    public void deleteBotUser(UUID botUserId) {
+        userRepository.deleteById(botUserId);
+    }
+
     private static String normalizeUsername(String username) {
         if (username == null) return null;
         String t = username.trim();

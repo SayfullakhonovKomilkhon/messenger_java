@@ -60,6 +60,12 @@ public class BotController {
         return ResponseEntity.ok(botService.regenerateToken(id, userId));
     }
 
+    @PostMapping("/{id}/toggle-active")
+    public ResponseEntity<BotResponse> toggleActive(Authentication auth, @PathVariable UUID id) {
+        UUID userId = UUID.fromString((String) auth.getPrincipal());
+        return ResponseEntity.ok(botService.toggleActive(id, userId));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBot(Authentication auth, @PathVariable UUID id) {
         UUID userId = UUID.fromString((String) auth.getPrincipal());

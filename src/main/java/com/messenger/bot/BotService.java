@@ -128,6 +128,19 @@ public class BotService {
     }
 
     @Transactional
+    public BotResponse toggleActive(UUID botId, UUID ownerId) {
+        Bot bot = botRepository.findById(botId)
+                .orElseThrow(() -> new AppException("Bot not found", HttpStatus.NOT_FOUND));
+        if (!bot.getOwnerId().equals(ownerId)) {
+            throw new AppException("Not your bot", HttpStatus.FORBIDDEN);
+        }
+        bot.setIsActive(!Boolean.TRUE.equals(bot.getIsActive()));
+        bot = botRepository.save(bot);
+        log.info("Bot {} active status toggled to {} by owner {}", botId, bot.getIsActive(), ownerId);
+        return toResponse(bot);
+    }
+
+    @Transactional
     public void deleteBot(UUID botId, UUID ownerId) {
         Bot bot = botRepository.findById(botId)
                 .orElseThrow(() -> new AppException("Bot not found", HttpStatus.NOT_FOUND));
@@ -135,6 +148,7 @@ public class BotService {
             throw new AppException("Not your bot", HttpStatus.FORBIDDEN);
         }
 
+        botUserService.deleteBotUser(bot.getUserId());
         botRepository.delete(bot);
         log.info("Bot {} deleted by owner {}", botId, ownerId);
     }
