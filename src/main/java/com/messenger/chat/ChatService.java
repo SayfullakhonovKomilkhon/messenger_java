@@ -63,6 +63,7 @@ public class ChatService {
         this.botRepository = botRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<ConversationResponse> getConversations(UUID userId) {
         List<ConversationParticipant> allParticipants =
                 conversationRepository.findAllParticipantsByUserConversations(userId);
