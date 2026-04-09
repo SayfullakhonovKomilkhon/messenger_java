@@ -34,7 +34,8 @@ public class BotMessagingFacade {
         }
 
         UUID botUserId = bot.getUserId();
-        String clientMessageId = "bot_" + UUID.randomUUID();
+        // DB: client_message_id VARCHAR(36) UNIQUE — must be exactly UUID length, no "bot_" prefix
+        String clientMessageId = UUID.randomUUID().toString();
 
         SendMessageRequest chatRequest = new SendMessageRequest(
                 request.conversationId(),
