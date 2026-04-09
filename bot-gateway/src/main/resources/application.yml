@@ -1,0 +1,11 @@
+server:
+  port: ${BOT_GATEWAY_PORT:3001}
+
+# Core (messenger-backend) HTTP URL, no trailing slash
+core:
+  base-url: ${CORE_BASE_URL:http://localhost:3000}
+  internal-bot-gateway-key: ${INTERNAL_BOT_GATEWAY_KEY:}
+
+logging:
+  level:
+    com.messenger.botgateway: INFO

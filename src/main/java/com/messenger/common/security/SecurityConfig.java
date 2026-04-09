@@ -24,10 +24,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final InternalBotGatewayAuthFilter internalBotGatewayAuthFilter;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtFilter jwtFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(JwtFilter jwtFilter,
+                          InternalBotGatewayAuthFilter internalBotGatewayAuthFilter,
+                          ObjectMapper objectMapper) {
         this.jwtFilter = jwtFilter;
+        this.internalBotGatewayAuthFilter = internalBotGatewayAuthFilter;
         this.objectMapper = objectMapper;
     }
 
@@ -57,6 +61,7 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Access denied"))
                 )
+                .addFilterBefore(internalBotGatewayAuthFilter, JwtFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

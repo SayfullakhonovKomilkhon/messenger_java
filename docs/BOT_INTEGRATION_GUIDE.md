@@ -2,7 +2,11 @@
 
 Документ описывает **роль бота в системе**, **чего сервер не делает сам** и **пошаговую настройку** внешнего сервиса, чтобы бот отвечал пользователям.
 
-Базовый URL API в примерах: `https://<host>/api/v1` — подставьте свой хост (например `http://localhost:3000` для локального backend).
+Базовый URL API в примерах: `https://<host>/api/v1` — подставьте свой хост.
+
+**Bot API (`/api/v1/bot/*`)** обслуживает отдельный сервис **bot-gateway** (порт по умолчанию `3001`), который проксирует запросы на ядро по внутреннему пути `/internal/v1/bot/*` с заголовком `X-Internal-Bot-Key`. В проде указывайте **публичный URL gateway** (не прямой URL ядра для этих маршрутов). Управление ботами владельца (`/api/v1/bots/*`) остаётся на ядре.
+
+Переменные окружения: на **ядре** и **gateway** одинаковый `INTERNAL_BOT_GATEWAY_KEY`; на gateway ещё `CORE_BASE_URL` — URL ядра без завершающего слэша (например `http://localhost:3000`).
 
 ---
 
@@ -159,7 +163,8 @@ curl -s -X POST "https://<host>/api/v1/bot/sendMessage" \
 ## 10. Где смотреть код (для ориентира в репозитории)
 
 - Вебхук и payload: `BotWebhookDispatcher.java`, `BotEventListener.java`
-- Отправка от имени бота: `BotMessagingFacade.java`, `BotApiController.java`
+- Отправка от имени бота (ядро, внутренний путь): `BotMessagingFacade.java`, `InternalBotController.java`
+- Публичный прокси Bot API: модуль `bot-gateway`, `BotPublicProxyController.java`
 - CRUD ботов для владельца: `BotController.java`, `BotService.java`
 - Сущность: `entity/Bot.java`
 

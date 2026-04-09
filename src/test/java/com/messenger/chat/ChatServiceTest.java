@@ -39,7 +39,7 @@ class ChatServiceTest {
         User user1 = createUser("+71111111111", "User One");
         User user2 = createUser("+72222222222", "User Two");
 
-        ConversationResponse response = chatService.createOrGetConversation(user1.getId(), user2.getId());
+        ConversationResponse response = chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
 
         assertNotNull(response);
         assertNotNull(response.id());
@@ -53,8 +53,8 @@ class ChatServiceTest {
         User user1 = createUser("+73333333333", "User Three");
         User user2 = createUser("+74444444444", "User Four");
 
-        ConversationResponse first = chatService.createOrGetConversation(user1.getId(), user2.getId());
-        ConversationResponse second = chatService.createOrGetConversation(user1.getId(), user2.getId());
+        ConversationResponse first = chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
+        ConversationResponse second = chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
 
         assertEquals(first.id(), second.id());
     }
@@ -64,7 +64,7 @@ class ChatServiceTest {
         User user = createUser("+75555555555", "User Five");
 
         assertThrows(AppException.class, () ->
-                chatService.createOrGetConversation(user.getId(), user.getId()));
+                chatService.createOrGetConversation(user.getId(), user.getId(), "test"));
     }
 
     @Test
@@ -72,11 +72,13 @@ class ChatServiceTest {
         User user1 = createUser("+76666666666", "User Six");
         User user2 = createUser("+77777777777", "User Seven");
 
-        ConversationResponse conv = chatService.createOrGetConversation(user1.getId(), user2.getId());
+        ConversationResponse conv = chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
         UUID convId = UUID.fromString(conv.id());
 
         String clientMsgId = UUID.randomUUID().toString();
-        SendMessageRequest request = new SendMessageRequest(convId, "Hello", null, clientMsgId);
+        SendMessageRequest request = new SendMessageRequest(
+                convId, "Hello", null, null, clientMsgId,
+                null, null, null, null, null, null, null);
 
         MessageResponse first = chatService.sendMessage(user1.getId(), request);
         MessageResponse second = chatService.sendMessage(user1.getId(), request);
@@ -90,7 +92,7 @@ class ChatServiceTest {
         User user1 = createUser("+78888888888", "User Eight");
         User user2 = createUser("+79999999999", "User Nine");
 
-        chatService.createOrGetConversation(user1.getId(), user2.getId());
+        chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
 
         List<ConversationResponse> conversations = chatService.getConversations(user1.getId());
         assertFalse(conversations.isEmpty());
@@ -102,7 +104,7 @@ class ChatServiceTest {
         User user2 = createUser("+70002222222", "User B");
         User user3 = createUser("+70003333333", "User C");
 
-        ConversationResponse conv = chatService.createOrGetConversation(user1.getId(), user2.getId());
+        ConversationResponse conv = chatService.createOrGetConversation(user1.getId(), user2.getId(), "test");
         UUID convId = UUID.fromString(conv.id());
 
         assertThrows(AppException.class, () ->

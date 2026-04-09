@@ -162,6 +162,13 @@ public class BotService {
         return botRepository.findByUserId(userId).orElse(null);
     }
 
+    @Transactional
+    public void updateBotWebhook(Bot bot, String url) {
+        String v = url != null && url.isBlank() ? null : url;
+        bot.setWebhookUrl(v);
+        botRepository.save(bot);
+    }
+
     private static String normalizeUsername(String username) {
         if (username == null) return null;
         String t = username.trim();

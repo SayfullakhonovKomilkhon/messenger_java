@@ -16,21 +16,19 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Bot-facing API. Authenticated via "Authorization: Bot <token>" header.
- * No JWT, no user session — bots use their own token.
+ * Bot execution API on core — only reachable from bot-gateway with X-Internal-Bot-Key.
+ * External clients use bot-gateway /api/v1/bot/* (same paths, no internal header).
  */
 @RestController
-@RequestMapping("/api/v1/bot")
-public class BotApiController {
+@RequestMapping("/internal/v1/bot")
+public class InternalBotController {
 
     private final BotService botService;
     private final BotMessagingFacade messagingFacade;
-    private final BotRepository botRepository;
 
-    public BotApiController(BotService botService, BotMessagingFacade messagingFacade, BotRepository botRepository) {
+    public InternalBotController(BotService botService, BotMessagingFacade messagingFacade) {
         this.botService = botService;
         this.messagingFacade = messagingFacade;
-        this.botRepository = botRepository;
     }
 
     @PostMapping("/sendMessage")
@@ -71,17 +69,16 @@ public class BotApiController {
             @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody BotSetWebhookRequest request) {
         Bot bot = resolveBot(authHeader);
-        bot.setWebhookUrl(request.url());
-        botRepository.save(bot);
-        return ResponseEntity.ok(Map.of("status", "ok", "webhook_url", request.url() != null ? request.url() : ""));
+        botService.updateBotWebhook(bot, request.url());
+        String saved = request.url() != null ? request.url() : "";
+        return ResponseEntity.ok(Map.of("status", "ok", "webhook_url", saved));
     }
 
     @DeleteMapping("/webhook")
     public ResponseEntity<Map<String, String>> deleteWebhook(
             @RequestHeader("Authorization") String authHeader) {
         Bot bot = resolveBot(authHeader);
-        bot.setWebhookUrl(null);
-        botRepository.save(bot);
+        botService.updateBotWebhook(bot, null);
         return ResponseEntity.ok(Map.of("status", "ok", "webhook_url", ""));
     }
 

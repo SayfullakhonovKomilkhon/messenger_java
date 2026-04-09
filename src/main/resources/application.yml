@@ -58,6 +58,11 @@ fcm:
   private-key: ${FCM_PRIVATE_KEY:}
   private-key-id: ${FCM_PRIVATE_KEY_ID:}
 
+# Shared secret: bot-gateway must send this header to core (/internal/v1/bot/**).
+# Generate a long random string in production.
+messenger:
+  internal-bot-gateway-key: ${INTERNAL_BOT_GATEWAY_KEY:}
+
 logging:
   level:
     root: INFO
