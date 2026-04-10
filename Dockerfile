@@ -10,8 +10,9 @@ COPY build.gradle settings.gradle ./
 # Download dependencies (cached if build files don't change)
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
 
-# Copy source and build
+# Copy source and build (subproject bot-gateway required by settings.gradle)
 COPY src src
+COPY bot-gateway bot-gateway
 RUN ./gradlew bootJar --no-daemon -x test
 
 # Stage 2: Run

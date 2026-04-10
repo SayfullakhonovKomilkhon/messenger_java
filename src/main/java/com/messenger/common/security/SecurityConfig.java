@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
-                                "/api/v1/bot/**",
+                                // Internal bot API: no JWT; X-Internal-Bot-Key checked by InternalBotGatewayAuthFilter
+                                "/internal/v1/bot/**",
                                 "/ws/**",
                                 "/uploads/**",
                                 "/swagger-ui/**",

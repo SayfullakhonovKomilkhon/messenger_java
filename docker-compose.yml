@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -39,10 +37,27 @@ services:
       FILE_UPLOAD_DIR: /app/uploads
       FILE_PUBLIC_BASE_URL: http://31.130.150.246:3000/uploads
       FCM_SERVICE_ACCOUNT_FILE: /app/firebase-service-account.json
+      # Required if anything calls /internal/v1/bot (e.g. bot-gateway). Empty = 503 on those routes.
+      INTERNAL_BOT_GATEWAY_KEY: ${INTERNAL_BOT_GATEWAY_KEY:-}
       JAVA_OPTS: "-Xmx512m -Xms256m"
     volumes:
       - uploads:/app/uploads
       - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+
+  bot-gateway:
+    build:
+      context: .
+      dockerfile: bot-gateway/Dockerfile
+    restart: always
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+    environment:
+      PORT: 3001
+      CORE_BASE_URL: http://backend:3000
+      INTERNAL_BOT_GATEWAY_KEY: ${INTERNAL_BOT_GATEWAY_KEY:-}
+      JAVA_OPTS: "-Xmx256m -Xms128m"
 
 volumes:
   pgdata:
