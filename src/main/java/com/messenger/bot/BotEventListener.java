@@ -35,7 +35,10 @@ public class BotEventListener {
             if (participantId.equals(senderId)) continue;
 
             Bot bot = botRepository.findByUserId(participantId).orElse(null);
-            if (bot != null && Boolean.TRUE.equals(bot.getIsActive()) && bot.getWebhookUrl() != null) {
+            if (bot != null
+                    && Boolean.TRUE.equals(bot.getIsActive())
+                    && bot.getWebhookUrl() != null
+                    && !bot.getWebhookUrl().isBlank()) {
                 log.debug("Dispatching webhook to bot {} for message {}", bot.getId(), message.id());
                 webhookDispatcher.dispatch(bot, message);
             }

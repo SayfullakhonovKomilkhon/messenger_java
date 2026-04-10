@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -68,6 +69,11 @@ public class BotPublicProxyController {
             return ResponseEntity.status(r.getStatusCode()).body(r.getBody());
         } catch (HttpStatusCodeException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        } catch (RestClientException ex) {
+            log.error("Core request failed (check CORE_BASE_URL and that backend is up): {} — {}", url, ex.toString());
+            return ResponseEntity.status(502)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\":\"BAD_GATEWAY\",\"message\":\"Cannot reach messenger core from bot-gateway\"}");
         }
     }
 

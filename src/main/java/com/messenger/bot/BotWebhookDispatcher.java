@@ -55,7 +55,7 @@ public class BotWebhookDispatcher {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             restTemplate.postForEntity(webhookUrl, new HttpEntity<>(payload, headers), Void.class);
-            log.debug("Webhook delivered to bot {} at {}", bot.getId(), webhookUrl);
+            log.info("Webhook delivered to bot {} at {}", bot.getId(), webhookUrl);
         } catch (Exception e) {
             log.warn("Webhook failed for bot {} at {}: {}", bot.getId(), webhookUrl, e.getMessage());
         }
