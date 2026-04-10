@@ -62,8 +62,9 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Access denied"))
                 )
-                .addFilterBefore(internalBotGatewayAuthFilter, JwtFilter.class)
+                // Register JwtFilter first so it has an order; then place internal filter before it (Spring 6 requirement).
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(internalBotGatewayAuthFilter, JwtFilter.class)
                 .build();
     }
 
