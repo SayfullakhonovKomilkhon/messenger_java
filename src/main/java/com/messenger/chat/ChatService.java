@@ -221,11 +221,27 @@ public class ChatService {
 
         List<ConversationParticipant> participants =
                 conversationRepository.findParticipants(request.conversationId());
-        for (ConversationParticipant cp : participants) {
-            if (!cp.getUser().getId().equals(senderId)) {
-                cp.setUnreadCount(cp.getUnreadCount() != null ? cp.getUnreadCount() + 1 : 1);
-                participantRepository.save(cp);
+
+        if (conv.getType() == ConversationType.DIRECT) {
+            List<ConversationParticipant> others = participants.stream()
+                    .filter(cp -> !cp.getUser().getId().equals(senderId))
+                    .toList();
+            if (others.size() == 1 && Boolean.TRUE.equals(others.get(0).getUser().getIsBot())) {
+                message.setStatus("READ");
+                message = messageRepository.save(message);
             }
+        }
+
+        for (ConversationParticipant cp : participants) {
+            if (cp.getUser().getId().equals(senderId)) {
+                continue;
+            }
+            // Bots "read" instantly (message marked READ above); do not bump their unread counter.
+            if (Boolean.TRUE.equals(cp.getUser().getIsBot())) {
+                continue;
+            }
+            cp.setUnreadCount(cp.getUnreadCount() != null ? cp.getUnreadCount() + 1 : 1);
+            participantRepository.save(cp);
         }
 
         log.debug("Message sent in conversation {}", request.conversationId());
@@ -240,6 +256,18 @@ public class ChatService {
         String senderName = sender != null ? resolveUserDisplayName(sender) : "Unknown";
 
         notificationService.sendToUser(senderId, "/queue/messages", response);
+
+        if ("READ".equals(response.status())) {
+            List<UUID> otherIdsForRead = getOtherParticipantIds(request.conversationId(), senderId);
+            Map<String, Object> statusEvent = new LinkedHashMap<>();
+            statusEvent.put("type", "READ");
+            statusEvent.put("messageId", response.id());
+            statusEvent.put("conversationId", response.conversationId());
+            if (otherIdsForRead.size() == 1) {
+                statusEvent.put("readBy", otherIdsForRead.get(0).toString());
+            }
+            notificationService.sendStatusEvent(senderId, statusEvent);
+        }
 
         String pushText = Boolean.TRUE.equals(request.encrypted())
                 ? "Новое сообщение"
